@@ -87,7 +87,7 @@ def calculate_ahp():
         "top_sites": top_sites
     })
 
-@app.route("/healthz")
+@app.route("/healthz") #for cronjobs
 def healthz():
     return "OK", 200
 
