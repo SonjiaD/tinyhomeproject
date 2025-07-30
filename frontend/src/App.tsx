@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { MapContainer, TileLayer, CircleMarker, Tooltip as LeafletTooltip } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
 
 const features = [
   "Transit Access",
@@ -21,9 +23,17 @@ const allPairs = (features: string[]) => {
   return pairs
 }
 
+type RankedSite = {
+  lat: number
+  lon: number
+  rank: number
+  final_score: number
+}
+
 function App() {
   const [comparisons, setComparisons] = useState<{ [key: string]: string }>({})
   const [result, setResult] = useState<{ [key: string]: number }>({})
+  const [mapData, setMapData] = useState<RankedSite[]>([])
 
   const handleChange = (key: string, value: string) => {
     setComparisons(prev => ({ ...prev, [key]: value }))
@@ -32,7 +42,20 @@ function App() {
   const submit = async () => {
     const response = await axios.post("http://localhost:5000/api/ahp", { comparisons })
     setResult(response.data.weights)
+    setMapData(response.data.top_sites)
   }
+
+  const getRankColor = (rank: number) => {
+    if (rank <= 100) return "#1b5e20"
+    if (rank <= 200) return "#388e3c"
+    if (rank <= 300) return "#66bb6a"
+    if (rank <= 400) return "#a5d6a7"
+    return "#e8f5e9"
+  }
+
+  const mapCenter = mapData.length
+    ? [mapData[0].lat, mapData[0].lon]
+    : [37.8044, -122.2712] // Oakland fallback
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 font-sans">
@@ -77,6 +100,39 @@ function App() {
               <Bar dataKey="weight" fill="#4a6240" />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      )}
+
+      {mapData.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-xl font-semibold mb-3">Top 500 Ranked Sites Map</h2>
+          <MapContainer
+            center={mapCenter as [number, number]}
+            zoom={13}
+            scrollWheelZoom={true}
+            style={{ height: "500px", width: "100%", borderRadius: "8px" }}
+          >
+            <TileLayer
+              attribution='&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {mapData.map((site, idx) => (
+              <CircleMarker
+                key={idx}
+                center={[site.lat, site.lon]}
+                radius={5}
+                color={getRankColor(site.rank)}
+                fillOpacity={0.9}
+              >
+                <LeafletTooltip direction="top" offset={[0, -5]} opacity={1} permanent={false}>
+                  <div>
+                    <b>Rank:</b> {site.rank}<br />
+                    <b>Score:</b> {site.final_score.toFixed(4)}
+                  </div>
+                </LeafletTooltip>
+              </CircleMarker>
+            ))}
+          </MapContainer>
         </div>
       )}
     </div>
