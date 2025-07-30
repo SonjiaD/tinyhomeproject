@@ -14,6 +14,19 @@ const features = [
   "Urban Plan Priority Area"
 ]
 
+const featureMap: { [label: string]: string } = {
+  "Transit Access": "transit_dist",
+  "Homeless Services Nearby": "homeless_service_dist",
+  "Affordable Housing Nearby": "public_housing_dist",
+  "Access to Water Infrastructure": "water_infrastructure_dist",
+  "Nearby City Facilities": "city_facility_dist",
+  "Urban Plan Priority Area": "general_plan_dist",
+}
+
+const reverseMap: { [backendKey: string]: string } = Object.fromEntries(
+  Object.entries(featureMap).map(([label, key]) => [key, label])
+)
+
 const allPairs = (features: string[]) => {
   const pairs = []
   for (let i = 0; i < features.length; i++) {
@@ -118,8 +131,9 @@ export default function AHPPage() {
           <h2 className="text-xl font-semibold mb-3">Results:</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart
-            data={Object.entries(result).map(([k, v]) => ({ feature: k, weight: v }))}
-            margin={{ top: 20, right: 30, left: 20, bottom: 60 }} // <-- more bottom space
+            //reverse map to make feature names clearer
+            data={Object.entries(result).map(([k, v]) => ({ feature: reverseMap[k] || k, weight: v }))}
+            margin={{ top: 20, right: 30, left: 50, bottom: 60 }} // <-- more bottom space
             >              
             <XAxis 
                 dataKey="feature" 
