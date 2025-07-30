@@ -3,6 +3,8 @@ from flask_cors import CORS
 import numpy as np
 import geopandas as gpd
 import pandas as pd
+import os
+
 
 app = Flask(__name__)
 CORS(app)
@@ -86,4 +88,5 @@ def calculate_ahp():
     })
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))  # Use Render-provided port
+    app.run(host="0.0.0.0", port=port)
