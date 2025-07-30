@@ -40,10 +40,16 @@ function App() {
   }
 
   const submit = async () => {
-    const response = await axios.post("http://localhost:5000/api/ahp", { comparisons })
-    setResult(response.data.weights)
-    setMapData(response.data.top_sites)
+    try {
+      const response = await axios.post("https://tinyhomeproject.onrender.com/api/ahp", { comparisons })
+      setResult(response.data.weights)
+      setMapData(response.data.top_sites)
+    } catch (err) {
+      console.error("API error:", err)
+      alert("Something went wrong contacting the server. Please try again.")
+    }
   }
+
 
   const getRankColor = (rank: number) => {
     if (rank <= 100) return "#1b5e20"
