@@ -87,6 +87,11 @@ def calculate_ahp():
         "top_sites": top_sites
     })
 
+@app.route("/healthz")
+def healthz():
+    return "OK", 200
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))  # Use Render-provided port
     app.run(host="0.0.0.0", port=port)
