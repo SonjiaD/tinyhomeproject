@@ -117,8 +117,17 @@ export default function AHPPage() {
         <div className="mt-10 max-w-xl">
           <h2 className="text-xl font-semibold mb-3">Results:</h2>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={Object.entries(result).map(([k, v]) => ({ feature: k, weight: v }))}>
-              <XAxis dataKey="feature" />
+            <BarChart
+            data={Object.entries(result).map(([k, v]) => ({ feature: k, weight: v }))}
+            margin={{ top: 20, right: 30, left: 20, bottom: 60 }} // <-- more bottom space
+            >              
+            <XAxis 
+                dataKey="feature" 
+                angle={-20} 
+                textAnchor="end" 
+                interval={0} 
+                height={60}
+                />
               <YAxis />
               <Tooltip />
               <Bar dataKey="weight" fill="#4a6240" />
