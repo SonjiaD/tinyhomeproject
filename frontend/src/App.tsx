@@ -39,7 +39,10 @@ function App() {
     setComparisons(prev => ({ ...prev, [key]: value }))
   }
 
+  const [loading, setLoading] = useState(false)
+
   const submit = async () => {
+    setLoading(true)
     try {
       const response = await axios.post("https://tinyhomeproject.onrender.com/api/ahp", { comparisons })
       setResult(response.data.weights)
@@ -47,8 +50,11 @@ function App() {
     } catch (err) {
       console.error("API error:", err)
       alert("Something went wrong contacting the server. Please try again.")
+    } finally {
+      setLoading(false)
     }
   }
+
 
 
   const getRankColor = (rank: number) => {
@@ -90,10 +96,19 @@ function App() {
 
       <button
         onClick={submit}
-        className="mt-6 bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
+        disabled={loading}
+        className={`mt-6 px-4 py-2 rounded text-white ${
+          loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
+        }`}
       >
-        Compute Priorities
+        {loading ? "Computing..." : "Compute Priorities"}
       </button>
+
+      {loading && (
+        <p className="mt-4 text-gray-700 text-sm animate-pulse">
+          ⏳ Computing priorities and ranking sites, please wait...
+        </p>
+      )}
 
       {Object.keys(result).length > 0 && (
         <div className="mt-10 max-w-xl">
