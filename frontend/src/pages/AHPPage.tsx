@@ -229,7 +229,7 @@ export default function AHPPage() {
             <button
               onClick={async () => {
                 try {
-                  await axios.post("https://tinyhomeproject.onrender.com/api/save_map", {
+                  await axios.post("https://tinyhomeproject.onrender.com/api/save_ahp_submission", {
                     name: userName,
                     occupation,
                     location,
@@ -247,6 +247,7 @@ export default function AHPPage() {
             >
               Save My Map
             </button>
+
 
             {saveMessage && (
               <div className="mt-2 text-sm text-gray-700">{saveMessage}</div>
