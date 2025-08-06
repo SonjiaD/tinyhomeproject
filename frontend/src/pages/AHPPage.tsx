@@ -50,6 +50,13 @@ export default function AHPPage() {
   const [mapData, setMapData] = useState<RankedSite[]>([])
   const [loading, setLoading] = useState(false)
 
+  // User info for feedback
+  const [userName, setUserName] = useState('')
+  const [occupation, setOccupation] = useState('')
+  const [location, setLocation] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [saveMessage, setSaveMessage] = useState('')
+
   const handleChange = (key: string, value: string) => {
     setComparisons(prev => ({ ...prev, [key]: value }))
   }
@@ -180,8 +187,82 @@ export default function AHPPage() {
               </CircleMarker>
             ))}
           </MapContainer>
+          
+          <div className="mt-10 max-w-xl">
+            <h2 className="text-xl font-semibold mb-3">Submit Your Map</h2>
+            <p className="text-gray-600 mb-4">
+              Thank you for using our tool! You can optionally share your preferences and ranked sites
+              to support research by the Kalyan Lab at UBC. Only anonymized data will be used.
+            </p>
+
+            <div className="space-y-4">
+              <input
+                type="text"
+                className="w-full border px-4 py-2 rounded"
+                placeholder="Your Name (optional)"
+                value={userName}
+                onChange={e => setUserName(e.target.value)}
+              />
+              <input
+                type="text"
+                className="w-full border px-4 py-2 rounded"
+                placeholder="Occupation or Role (e.g. Student, Planner)"
+                value={occupation}
+                onChange={e => setOccupation(e.target.value)}
+              />
+              <input
+                type="text"
+                className="w-full border px-4 py-2 rounded"
+                placeholder="Location (City, Country)"
+                value={location}
+                onChange={e => setLocation(e.target.value)}
+              />
+              <textarea
+                className="w-full border px-4 py-2 rounded"
+                placeholder="Optional feedback or why you picked your weights..."
+                value={feedback}
+                onChange={e => setFeedback(e.target.value)}
+                rows={4}
+              />
+            </div>
+
+            <button
+              onClick={async () => {
+                try {
+                  await axios.post("https://tinyhomeproject.onrender.com/api/save_map", {
+                    name: userName,
+                    occupation,
+                    location,
+                    feedback,
+                    weights: result,
+                    top_sites: mapData,
+                  })
+                  setSaveMessage("✅ Your submission was saved. Thank you!")
+                } catch (err) {
+                  console.error(err)
+                  setSaveMessage("❌ There was a problem saving your map.")
+                }
+              }}
+              className="mt-4 px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800"
+            >
+              Save My Map
+            </button>
+
+            {saveMessage && (
+              <div className="mt-2 text-sm text-gray-700">{saveMessage}</div>
+            )}
+          </div>
+
+
         </div>
+
+        
       )}
+
+      
+
     </div>
+
+    
   )
 }
