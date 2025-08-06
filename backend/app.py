@@ -114,11 +114,10 @@ def healthz():
 # Initialize DynamoDB client
 dynamodb = boto3.resource(
     'dynamodb',
-    region_name=aws_region,
+    region_name='us-west-1',  # or 'us-east-1', etc. #need to choose region 
     aws_access_key_id=aws_access_key_id,
     aws_secret_access_key=aws_secret_access_key
 )
-
 table = dynamodb.Table(table_name)
 
 @app.route('/api/save_ahp_submission', methods=['POST'])
