@@ -6,13 +6,44 @@ It allows users to assign priorities to different urban planning criteria using 
 
 ---
 
-## 🔧 Tech Stack
+## 🛠 Tech Stack
 
-- **Frontend**: React (TypeScript), Leaflet, TailwindCSS
-- **Backend**: Flask (Python)
-- **Cloud**: Render (for hosting), AWS DynamoDB (for storing submissions)
+### Phase 1: Streamlit Prototype
+- Built using `Streamlit`, `Folium`, and `Pydeck`
+- Served as a rapid MVP for collecting feedback
+
+### Phase 2: Full-stack Migration
+Now rebuilt with a modern architecture:
+
+#### 🖥️ Frontend
+- **React + TypeScript**
+- **TailwindCSS** for styling
+- **Leaflet** for interactive mapping
+- **Recharts** for displaying AHP weights
+
+#### ⚙️ Backend
+- **Flask** (Python)
+- **DynamoDB** (AWS) for storing submissions
+- **Boto3** for AWS interactions
+- **CORS + .env** for secure deployment
+
+#### ☁️ Deployment
+- **Frontend:** [Netlify](https://www.netlify.com/)
+- **Backend:** [Render](https://render.com/)
+- **Database:** AWS DynamoDB (`TinyHomeSubmissions` table)
 
 ---
+
+## 🧪 Features
+
+✅ Interactive AHP weight assignment  
+✅ Realtime ranked site map using GeoJSON data  
+✅ Bar chart of feature priorities  
+✅ Save your personalized map + feedback to a database  
+✅ View saved submissions (coming soon: Gallery tab)  
+
+---
+
 
 ## 📦 Project Evolution
 
