@@ -25,7 +25,7 @@ This tool was originally built using **Streamlit** for rapid prototyping and has
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/tinyhome-oakland.git
+git clone https://github.com/SonjiaD/tinyhomeproject
 cd tinyhome-oakland
 ```
 
