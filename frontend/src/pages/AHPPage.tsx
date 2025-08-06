@@ -192,7 +192,7 @@ export default function AHPPage() {
             <h2 className="text-xl font-semibold mb-3">Submit Your Map</h2>
             <p className="text-gray-600 mb-4">
               Thank you for using our tool! You can optionally share your preferences and ranked sites
-              to support research by the Kalyan Lab at UBC. Only anonymized data will be used.
+              to support research by the Kalyan Lab at UBC.
             </p>
 
             <div className="space-y-4">
