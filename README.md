@@ -12,6 +12,9 @@ It allows users to assign priorities to different urban planning criteria using 
 - Built using `Streamlit`, `Folium`, and `Pydeck`
 - Served as a rapid MVP for collecting feedback
 
+#### Past Repository:
+https://github.com/SonjiaD/tinyhome-backend
+
 ### Phase 2: Full-stack Migration
 Now rebuilt with a modern architecture:
 
