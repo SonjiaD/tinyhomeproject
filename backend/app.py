@@ -5,9 +5,28 @@ import geopandas as gpd
 import pandas as pd
 import os
 
+#for the aws s3 bucket
+from dotenv import load_dotenv
+import os
+
+#dynamodb table writer
+import boto3
+import uuid
+from flask import request
+
+import datetime
+
 
 app = Flask(__name__)
 CORS(app)
+
+#for aws keys from .env file
+load_dotenv()
+
+aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
+aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+aws_region = os.getenv("AWS_REGION")
+table_name = os.getenv("DYNAMODB_TABLE")
 
 # Map UI labels to GeoJSON columns
 feature_map = {
@@ -90,6 +109,37 @@ def calculate_ahp():
 @app.route("/healthz") #for cronjobs
 def healthz():
     return "OK", 200
+
+#for dynamodb table writer
+# Initialize DynamoDB client
+dynamodb = boto3.resource(
+    'dynamodb',
+    region_name=aws_region,
+    aws_access_key_id=aws_access_key_id,
+    aws_secret_access_key=aws_secret_access_key
+)
+
+table = dynamodb.Table(table_name)
+
+@app.route('/api/save_ahp_submission', methods=['POST'])
+def save_ahp_submission():
+    data = request.get_json()
+
+    try:
+        item = {
+            'submission_id': str(uuid.uuid4()),
+            'timestamp': datetime.datetime.utcnow().isoformat(),
+            'user_name': data.get('name'),
+            'occupation': data.get('occupation'),
+            'location': data.get('location'),
+            'weights': data.get('weights'),  # dict of {feature: weight}
+            'top_sites': data.get('top_sites')  # list of ranked sites
+        }
+        table.put_item(Item=item)
+        return {'status': 'success'}, 200
+    except Exception as e:
+        print(f"Error saving to DynamoDB: {e}")
+        return {'error': str(e)}, 500
 
 
 if __name__ == "__main__":
