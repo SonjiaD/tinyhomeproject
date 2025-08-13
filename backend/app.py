@@ -136,6 +136,48 @@ def calculate_ahp():
         }
     })
 
+#api call for linear weighting.tsx page
+@app.route("/api/wsm", methods=["POST"])
+def weighted_sum_model():
+    data = request.get_json()
+    weights = data.get("weights", {}) or {}
+
+    # load geojson + ensure lon/lat CRS (same as AHP)
+    gdf = gpd.read_file("candidates_with_features.geojson").to_crs(epsg=4326)
+
+    # keep only weights that match columns present
+    cols = [c for c in weights.keys() if c in gdf.columns]
+    if not cols:
+        return jsonify({"error": "No valid weight columns provided"}), 400
+
+    # normalize weights to sum 1 (robust to user total != 1)
+    wvals = np.array([float(weights[c]) for c in cols], dtype=float)
+    if wvals.sum() == 0:
+        return jsonify({"error": "All weights are zero"}), 400
+    wvals = wvals / wvals.sum()
+
+    # normalize each column and compute weighted sum
+    norm_scores = [min_max_normalize(gdf[c]) for c in cols]
+    gdf["final_score"] = sum(w * s for w, s in zip(wvals, norm_scores))
+
+    ranked = gdf.sort_values("final_score", ascending=True).reset_index(drop=True)
+    ranked["rank"] = ranked.index + 1
+
+    # centroids in projected CRS then back to WGS84 (same rigor as AHP)
+    ranked_utm = ranked.to_crs(26910)
+    cent = ranked_utm.geometry.centroid
+    cent_ll = gpd.GeoSeries(cent, crs=26910).to_crs(4326)
+    ranked["lon"] = cent_ll.x
+    ranked["lat"] = cent_ll.y
+
+    top_sites = ranked.head(500)[["lat", "lon", "rank", "final_score"]].to_dict(orient="records")
+
+    # return the normalized weights used (for display/saving if desired)
+    display_weights = { cols[i]: round(float(wvals[i]), 4) for i in range(len(cols)) }
+
+    return jsonify({"weights": display_weights, "top_sites": top_sites})
+
+
 @app.route("/healthz") #for cronjobs
 def healthz():
     return "OK", 200

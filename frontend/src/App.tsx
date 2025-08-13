@@ -2,6 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
 import AHPPage from './pages/AHPPage'
 import AboutPage from './pages/AboutPage'
 import HomePage from './pages/HomePage'
+import LinearWeightingPage from "./pages/LinearWeightingPage";
+
 
 function App() {
   return (
@@ -12,6 +14,8 @@ function App() {
           <Link to="/" className="text-lg font-bold">Home</Link>
           <Link to="/ahp" className="hover:underline">AHP</Link>
           <Link to="/about" className="hover:underline">About</Link>
+          <Link to="/linear" className="hover:underline">Linear</Link>
+
         </nav>
 
         {/* Routing */}
@@ -19,6 +23,8 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/ahp" element={<AHPPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/linear" element={<LinearWeightingPage />} />
+
         </Routes>
       </div>
     </Router>
