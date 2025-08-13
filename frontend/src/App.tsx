@@ -13,8 +13,9 @@ function App() {
         <nav className="bg-green-800 text-white px-6 py-3 flex gap-6 shadow">
           <Link to="/" className="text-lg font-bold">Home</Link>
           <Link to="/ahp" className="hover:underline">AHP</Link>
-          <Link to="/about" className="hover:underline">About</Link>
+          
           <Link to="/linear" className="hover:underline">Linear</Link>
+          <Link to="/about" className="hover:underline">About</Link>
 
         </nav>
 
