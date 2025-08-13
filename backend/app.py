@@ -16,6 +16,11 @@ from flask import request
 
 import datetime
 
+#fixing error
+from decimal import Decimal
+import numpy as np
+import json 
+
 
 app = Flask(__name__)
 CORS(app)
@@ -27,6 +32,16 @@ aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
 aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 aws_region = os.getenv("AWS_REGION")
 table_name = os.getenv("DYNAMODB_TABLE")
+
+#helper
+def to_decimal(o):
+    if isinstance(o, float) or isinstance(o, np.floating):
+        return Decimal(str(o))              # keep precision
+    if isinstance(o, dict):
+        return {k: to_decimal(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [to_decimal(x) for x in o]
+    return o
 
 # Map UI labels to GeoJSON columns
 feature_map = {
@@ -113,17 +128,16 @@ def healthz():
 #for dynamodb table writer
 # Initialize DynamoDB client
 dynamodb = boto3.resource(
-    'dynamodb',
-    region_name='us-west-1',  # or 'us-east-1', etc. #need to choose region 
+    "dynamodb",
+    region_name="us-west-1",
     aws_access_key_id=aws_access_key_id,
-    aws_secret_access_key=aws_secret_access_key
+    aws_secret_access_key=aws_secret_access_key,
 )
 table = dynamodb.Table(table_name)
 
 @app.route('/api/save_ahp_submission', methods=['POST'])
 def save_ahp_submission():
     data = request.get_json()
-
     try:
         item = {
             'submission_id': str(uuid.uuid4()),
@@ -131,15 +145,17 @@ def save_ahp_submission():
             'user_name': data.get('name'),
             'occupation': data.get('occupation'),
             'location': data.get('location'),
-            'weights': data.get('weights'),  # dict of {feature: weight}
-            'top_sites': data.get('top_sites')  # list of ranked sites
+            'feedback': data.get('feedback'),   # optional but your UI sends it
+            # convert floats → Decimal recursively
+            'weights': to_decimal(data.get('weights', {})),
+            # keep payload modest and convert numbers
+            'top_sites': to_decimal((data.get('top_sites') or [])[:300]),
         }
         table.put_item(Item=item)
         return {'status': 'success'}, 200
     except Exception as e:
         print(f"Error saving to DynamoDB: {e}")
         return {'error': str(e)}, 500
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))  # Use Render-provided port

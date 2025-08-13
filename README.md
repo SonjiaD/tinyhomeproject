@@ -6,6 +6,13 @@ It allows users to assign priorities to different urban planning criteria using 
 
 ---
 
+
+## 📦 Project Evolution
+
+This tool was originally built using **Streamlit** for rapid prototyping and has since been upgraded to a **Flask + React** full-stack architecture for better performance, flexibility, and deployment scalability.
+
+---
+
 ## 🛠 Tech Stack
 
 ### Phase 1: Streamlit Prototype
@@ -47,12 +54,6 @@ Now rebuilt with a modern architecture:
 
 ---
 
-
-## 📦 Project Evolution
-
-This tool was originally built using **Streamlit** for rapid prototyping and has since been upgraded to a **Flask + React** full-stack architecture for better performance, flexibility, and deployment scalability.
-
----
 
 ## 🚀 Local Setup
 
@@ -105,16 +106,8 @@ Then open `http://localhost:5173` in your browser.
 
 ---
 
-## 🗺 Features
-
-- Pairwise comparisons of planning criteria using AHP
-- Interactive Leaflet map with top 500 ranked sites
-- Personalized user feedback and optional submission to DynamoDB
-- Fully deployable on Render and AWS
-
----
 
 ## 👩‍🔬 Research Use
 
-Submissions are collected (anonymously) to support research by the Kalyan Lab at the University of British Columbia (UBC) in partnership with Neighborship, a nonprofit focused on housing justice.
+Submissions are collected to support research by the Kalyan Lab at the University of British Columbia (UBC) in partnership with Neighborship, a nonprofit focused on housing justice.
 
