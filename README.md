@@ -5,7 +5,9 @@ This is a geospatial decision support web app for identifying optimal locations 
 It allows users to assign priorities to different urban planning criteria using the Analytical Hierarchy Process (AHP), visualize the ranked locations on a map, and optionally submit their preferences for research purposes.
 
 ---
-
+## Website Deployed
+Check out our website below and try it out!
+https://tinyhomeproject.netlify.app/
 
 ## 📦 Project Evolution
 

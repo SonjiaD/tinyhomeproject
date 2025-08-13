@@ -12,13 +12,11 @@ import os
 #dynamodb table writer
 import boto3
 import uuid
-from flask import request
 
 import datetime
 
-#fixing error
+#fixing error with AWS DynamoDB Decimal type
 from decimal import Decimal
-import numpy as np
 import json 
 
 
@@ -55,17 +53,26 @@ feature_map = {
 features = list(feature_map.keys())
 score_cols = list(feature_map.values())
 
-def min_max_normalize(series):
-    return (series - series.min()) / (series.max() - series.min()) if series.max() != series.min() else 0
+def min_max_normalize(series: pd.Series) -> pd.Series:
+    s = pd.to_numeric(series, errors="coerce")
+    # Conservative: treat missing as worst (max distance)
+    s = s.fillna(s.max())
+    if s.notna().sum() == 0:
+        # if truly all missing, return zeros so it doesn't affect ranking
+        return pd.Series(np.zeros(len(s)), index=s.index)
+    vmin, vmax = float(s.min()), float(s.max())
+    if vmax == vmin:
+        return pd.Series(np.zeros(len(s)), index=s.index)
+    return (s - vmin) / (vmax - vmin)
 
 @app.route("/api/ahp", methods=["POST"])
 def calculate_ahp():
-    # Load user comparisons
     data = request.json
     comparisons = data.get("comparisons", {})
     size = len(features)
     ahp_matrix = np.ones((size, size))
 
+    # Build pairwise comparison matrix (5-level compressed scale)
     for i, f1 in enumerate(features):
         for j, f2 in enumerate(features):
             if i >= j:
@@ -76,49 +83,57 @@ def calculate_ahp():
                 f"{f1} much more": 5,
                 f"{f1} more": 3,
                 "Equal": 1,
-                f"{f2} more": 1 / 3,
-                f"{f2} much more": 1 / 5
+                f"{f2} more": 1/3,
+                f"{f2} much more": 1/5,
             }.get(val, 1)
-            ahp_matrix[i][j] = scale
-            ahp_matrix[j][i] = 1 / scale
+            ahp_matrix[i, j] = scale
+            ahp_matrix[j, i] = 1/scale
 
-    # Eigenvector
+    # Principal eigenvector weights + consistency
     eigvals, eigvecs = np.linalg.eig(ahp_matrix)
-    max_index = np.argmax(eigvals)
-    weights = np.real(eigvecs[:, max_index])
-    weights = weights / weights.sum()
-    mapped_weights = {
-        feature_map[features[i]]: round(float(weights[i]), 4)
-        for i in range(len(features))
-    }
+    imax = np.argmax(eigvals.real)
+    w = np.abs(eigvecs[:, imax].real)
+    w = w / w.sum()
 
-    # Load GeoJSON
-    gdf = gpd.read_file("candidates_with_features.geojson")
-    gdf = gdf.to_crs(epsg=4326)  # ensure lat/lon coords
+    RI = {1:0,2:0,3:0.58,4:0.90,5:1.12,6:1.24,7:1.32,8:1.41,9:1.45,10:1.49}
+    n = len(features)
+    lambda_max = float(eigvals.real[imax])
+    CI = (lambda_max - n) / (n - 1) if n > 1 else 0.0
+    CR = CI / RI.get(n, 1.49) if n in RI else None
 
-    # Normalize distance columns
-    norm_scores = []
-    for col in score_cols:
-        gdf[col] = pd.to_numeric(gdf[col], errors="coerce").fillna(gdf[col].mean())
-        norm_scores.append(min_max_normalize(gdf[col]))
+    weights_for_calc = { feature_map[features[i]]: float(w[i]) for i in range(n) }
+    display_weights  = { k: round(v, 4) for k, v in weights_for_calc.items() }
 
-    # Apply AHP weights
-    weight_array = np.array([mapped_weights.get(col, 0.0) for col in score_cols])
-    weight_array /= weight_array.sum()
+    # Load GeoJSON and normalize distance features
+    gdf = gpd.read_file("candidates_with_features.geojson").to_crs(epsg=4326)
 
-    gdf["final_score"] = sum(w * s for w, s in zip(weight_array, norm_scores))
+    norm_scores = [min_max_normalize(gdf[col]) for col in score_cols]
+
+    # Weighted sum using full precision weights
+    weight_array = np.array([weights_for_calc.get(col, 0.0) for col in score_cols])
+    weight_array = weight_array / weight_array.sum()
+    gdf["final_score"] = sum(wi * si for wi, si in zip(weight_array, norm_scores))
+
     ranked = gdf.sort_values("final_score", ascending=True).reset_index(drop=True)
     ranked["rank"] = ranked.index + 1
 
-    # Compute centroids for map display
-    ranked["lon"] = ranked.geometry.centroid.x
-    ranked["lat"] = ranked.geometry.centroid.y
+    # Centroids in projected CRS → back to WGS84
+    ranked_utm = ranked.to_crs(26910)
+    cent = ranked_utm.geometry.centroid
+    cent_ll = gpd.GeoSeries(cent, crs=26910).to_crs(4326)
+    ranked["lon"] = cent_ll.x
+    ranked["lat"] = cent_ll.y
 
     top_sites = ranked.head(500)[["lat", "lon", "rank", "final_score"]].to_dict(orient="records")
 
     return jsonify({
-        "weights": mapped_weights,
-        "top_sites": top_sites
+        "weights": display_weights,
+        "top_sites": top_sites,
+        "consistency": {
+            "lambda_max": round(lambda_max, 6),
+            "CI": round(CI, 6),
+            "CR": round(CR, 6) if CR is not None else None
+        }
     })
 
 @app.route("/healthz") #for cronjobs
@@ -129,7 +144,7 @@ def healthz():
 # Initialize DynamoDB client
 dynamodb = boto3.resource(
     "dynamodb",
-    region_name="us-west-1",
+    region_name=aws_region or "us-west-1",
     aws_access_key_id=aws_access_key_id,
     aws_secret_access_key=aws_secret_access_key,
 )
