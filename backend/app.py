@@ -198,17 +198,23 @@ table = dynamodb.Table(table_name)
 @app.route('/api/save_ahp_submission', methods=['POST'])
 def save_ahp_submission():
     data = request.get_json()
+
+    # Check required fields
+    required_fields = ['name', 'occupation', 'location', 'feedback']
+    for field in required_fields:
+        if not data.get(field):
+            return {'error': f'{field} is required'}, 400
+
     try:
         item = {
             'submission_id': str(uuid.uuid4()),
             'timestamp': datetime.datetime.now(datetime.UTC).isoformat(),
             'method': data.get('method', 'AHP'),
-            'user_name': data.get('name'),
             'occupation': data.get('occupation'),
             'location': data.get('location'),
-            'feedback': data.get('feedback'),   # optional but your UI sends it
+            'feedback': data.get('feedback'),
             # convert floats → Decimal recursively
-            'consistency_ratio': to_decimal(data.get('consistency_ratio')),
+            'consistency_ratio': to_decimal(data.get('consistency_ratio', 0)),
             'weights': to_decimal(data.get('weights', {})),
             # keep payload modest and convert numbers
             'top_sites': to_decimal((data.get('top_sites') or [])[:300]),
