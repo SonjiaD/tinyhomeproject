@@ -15,7 +15,7 @@ export default function HomePage() {
   const [mapData, setMapData] = useState<Site[]>([])
 
   useEffect(() => {
-    fetch('https://tinyhomeproject.onrender.com/api/default_map')
+    fetch(`${import.meta.env.VITE_API_URL}/api/default_map`)
       .then(res => res.json())
       .then(data => setMapData(data.sites))
       .catch(err => console.error('Failed to load default map data', err))

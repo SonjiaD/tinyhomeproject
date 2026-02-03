@@ -49,6 +49,8 @@ export default function AHPPage() {
   const [result, setResult] = useState<{ [key: string]: number }>({})
   const [mapData, setMapData] = useState<RankedSite[]>([])
   const [loading, setLoading] = useState(false)
+  const [inconsistent, setInconsistent] = useState(false)
+  const [mismatches, setMismatches] = useState<{ question: number; pair: string; current: string; suggested: string }[]>([])
 
   // User info for feedback
   const [userName, setUserName] = useState('')
@@ -63,10 +65,20 @@ export default function AHPPage() {
 
   const submit = async () => {
     setLoading(true)
+    setInconsistent(false)
+    setMismatches([])
     try {
-      const response = await axios.post("https://tinyhomeproject.onrender.com/api/ahp", { comparisons })
-      setResult(response.data.weights)
-      setMapData(response.data.top_sites)
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/ahp`, { comparisons })
+      const cr = response.data.consistency?.CR
+      if (cr !== null && cr > 0.10) {
+        setInconsistent(true)
+        setMismatches(response.data.mismatches || [])
+        setResult({})
+        setMapData([])
+      } else {
+        setResult(response.data.weights)
+        setMapData(response.data.top_sites)
+      }
     } catch (err) {
       console.error("API error:", err)
       alert("Something went wrong contacting the server. Please try again.")
@@ -92,11 +104,15 @@ export default function AHPPage() {
       <h1 className="text-2xl font-bold mb-4">AHP Feature Comparisons</h1>
 
       <div className="grid grid-cols-1 gap-6 max-w-3xl">
-        {allPairs(features).map(([f1, f2]) => {
+        {allPairs(features).map(([f1, f2], idx) => {
           const key = `${f1}__vs__${f2}`
+          const qNum = idx + 1
           return (
             <div key={key} className="flex flex-col">
-              <label className="mb-1 font-medium">{`How much more important is "${f1}" than "${f2}"?`}</label>
+              <label className="mb-1 font-medium">
+                <span className="text-gray-500 mr-1">Q{qNum}.</span>
+                {`How much more important is "${f1}" than "${f2}"?`}
+              </label>
               <select
                 className="border rounded px-3 py-2"
                 value={comparisons[key] || "Equal"}
@@ -130,6 +146,27 @@ export default function AHPPage() {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
           </svg>
           Computing priorities and ranking sites...
+        </div>
+      )}
+
+      {inconsistent && (
+        <div className="mt-6 max-w-3xl bg-red-50 border border-red-300 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Some of your answers conflict with each other</h3>
+          <p className="text-red-700 text-sm">
+            We found answers that contradict each other. Please fix the following
+            and click "Compute Priorities" again:
+          </p>
+          {mismatches.length > 0 && (
+            <ul className="mt-3 space-y-2">
+              {mismatches.map((m, i) => (
+                <li key={i} className="bg-red-100 rounded p-3 text-sm text-red-800">
+                  <p><span className="font-semibold">Question {m.question}</span> ({m.pair})</p>
+                  <p className="mt-1">You answered: <span className="font-medium">"{m.current}"</span></p>
+                  <p>To fix, change it to: <span className="font-semibold text-green-800">"{m.suggested}"</span></p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
@@ -229,7 +266,7 @@ export default function AHPPage() {
             <button
               onClick={async () => {
                 try {
-                  await axios.post("https://tinyhomeproject.onrender.com/api/save_ahp_submission", {
+                  await axios.post(`${import.meta.env.VITE_API_URL}/api/save_ahp_submission`, {
                     name: userName,
                     occupation,
                     location,

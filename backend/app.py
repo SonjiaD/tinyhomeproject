@@ -64,6 +64,32 @@ def min_max_normalize(series: pd.Series) -> pd.Series:
         return pd.Series(np.zeros(len(s)), index=s.index)
     return (s - vmin) / (vmax - vmin)
 
+def find_mismatches(w, features, comparisons):
+    """Compare each user answer against the computed weights and flag mismatches."""
+    mismatches = []
+    q_num = 0
+    for i in range(len(features)):
+        for j in range(i + 1, len(features)):
+            q_num += 1
+            key = f"{features[i]}__vs__{features[j]}"
+            val = comparisons.get(key, "Equal")
+            if val == "Equal":
+                continue
+            user_prefers_i = val in [f"{features[i]} much more", f"{features[i]} more"]
+            weights_prefer_i = w[i] > w[j]
+            if user_prefers_i != weights_prefer_i:
+                if weights_prefer_i:
+                    suggested = f"{features[i]} more"
+                else:
+                    suggested = f"{features[j]} more"
+                mismatches.append({
+                    "question": q_num,
+                    "pair": f"{features[i]} vs {features[j]}",
+                    "current": val,
+                    "suggested": suggested,
+                })
+    return mismatches
+
 @app.route("/api/ahp", methods=["POST"])
 def calculate_ahp():
     data = request.json
@@ -99,6 +125,16 @@ def calculate_ahp():
     lambda_max = float(eigvals.real[imax])
     CI = (lambda_max - n) / (n - 1) if n > 1 else 0.0
     CR = CI / RI.get(n, 1.49) if n in RI else None
+
+    # If inconsistent, return early with mismatch details
+    if CR is not None and CR > 0.10:
+        mismatches = find_mismatches(w, features, comparisons)
+        return jsonify({
+            "consistency": {"CR": round(CR, 6)},
+            "mismatches": mismatches,
+            "weights": {},
+            "top_sites": [],
+        })
 
     weights_for_calc = { feature_map[features[i]]: float(w[i]) for i in range(n) }
     display_weights  = { k: round(v, 4) for k, v in weights_for_calc.items() }
@@ -212,6 +248,7 @@ def save_ahp_submission():
         item = {
             'submission_id': str(uuid.uuid4()),
             'timestamp': datetime.datetime.now(datetime.UTC).isoformat(),
+            'method': data.get('method', 'AHP'),
             'user_name': data.get('name'),
             'occupation': data.get('occupation'),
             'location': data.get('location'),

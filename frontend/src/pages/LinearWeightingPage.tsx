@@ -89,7 +89,7 @@ export default function LinearWeightingPage() {
     try {
       // call the new backend route (see section 2)
       const resp = await axios.post(
-        "https://tinyhomeproject.onrender.com/api/wsm",
+        `${import.meta.env.VITE_API_URL}/api/wsm`,
         { weights: weights01 }
       );
       setMapData(resp.data.top_sites || []);
@@ -105,7 +105,7 @@ export default function LinearWeightingPage() {
 
   const saveSubmission = async () => {
     try {
-      await axios.post("https://tinyhomeproject.onrender.com/api/save_ahp_submission", {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/save_ahp_submission`, {
         name: userName,
         occupation,
         location,

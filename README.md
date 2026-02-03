@@ -63,40 +63,47 @@ Now rebuilt with a modern architecture:
 
 ```bash
 git clone https://github.com/SonjiaD/tinyhomeproject
-cd tinyhome-oakland
+cd tinyhomeproject
 ```
 
----
+### 2. Backend (Flask) — Terminal 1
 
-## 2. Backend Setup (Flask)
+Activate the virtual environment from the repo root, then run the backend:
+
+```bash
+# Windows
+venv\Scripts\activate
+
+# macOS/Linux
+# source venv/bin/activate
+```
+
+If you don't have a `venv/` folder yet, create one first:
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+Then install dependencies and start the server:
 
 ```bash
 cd backend
-python -m venv venv
-venv\Scripts\activate      # On Windows
-# source venv/bin/activate   # On macOS/Linux
-
 pip install -r requirements.txt
-```
-
-Create a `.env` file in the `backend/` directory:
-
-```ini
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
-DYNAMODB_TABLE_NAME=TinyHomeSubmissions
-REGION_NAME=us-west-1
-```
-
-Then start the Flask server:
-
-```bash
 python app.py
 ```
 
----
+The backend runs on `http://localhost:10000`.
 
-## 3. Frontend Setup (React)
+> You also need a `backend/.env` file with your AWS credentials:
+> ```ini
+> AWS_ACCESS_KEY_ID=your-access-key
+> AWS_SECRET_ACCESS_KEY=your-secret-key
+> AWS_REGION=us-west-1
+> DYNAMODB_TABLE=TinyHomeSubmissions
+> ```
+
+### 3. Frontend (React) — Terminal 2
 
 ```bash
 cd frontend
@@ -104,7 +111,9 @@ npm install
 npm run dev
 ```
 
-Then open `http://localhost:5173` in your browser.
+The frontend runs on `http://localhost:5173`. Open that URL in your browser.
+
+> **How it works:** `npm run dev` loads `frontend/.env.local` which points API calls to `http://localhost:10000` (local backend). Production builds (`npm run build`) load `frontend/.env.production` which points to the deployed Render backend. No code changes needed to switch.
 
 ---
 
