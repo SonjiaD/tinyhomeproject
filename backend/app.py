@@ -7,7 +7,6 @@ import os
 
 #for the aws s3 bucket
 from dotenv import load_dotenv
-import os
 
 #dynamodb table writer
 import boto3
@@ -136,6 +135,20 @@ def calculate_ahp():
         }
     })
 
+@app.route("/api/default_map", methods=["GET"])
+def default_map():
+    gdf = gpd.read_file("candidates_with_features.geojson").to_crs(epsg=4326)
+
+    # Project to UTM for accurate centroids, then back to WGS84
+    gdf_utm = gdf.to_crs(26910)
+    cent = gdf_utm.geometry.centroid
+    cent_ll = gpd.GeoSeries(cent, crs=26910).to_crs(4326)
+    gdf["lon"] = cent_ll.x
+    gdf["lat"] = cent_ll.y
+
+    sites = gdf[["lat", "lon"]].to_dict(orient="records")
+    return jsonify({"sites": sites})
+
 #api call for linear weighting.tsx page
 @app.route("/api/wsm", methods=["POST"])
 def weighted_sum_model():
@@ -198,7 +211,7 @@ def save_ahp_submission():
     try:
         item = {
             'submission_id': str(uuid.uuid4()),
-            'timestamp': datetime.datetime.utcnow().isoformat(),
+            'timestamp': datetime.datetime.now(datetime.UTC).isoformat(),
             'user_name': data.get('name'),
             'occupation': data.get('occupation'),
             'location': data.get('location'),

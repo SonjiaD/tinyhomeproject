@@ -2,34 +2,24 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapContainer, TileLayer, CircleMarker, Tooltip as LeafletTooltip } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
-interface RankedSite {
+interface Site {
   lat: number
   lon: number
-  rank: number
-  final_score: number
 }
 
 export default function HomePage() {
   const navigate = useNavigate()
-  const [mapData, setMapData] = useState<RankedSite[]>([])
+  const [mapData, setMapData] = useState<Site[]>([])
 
   useEffect(() => {
     fetch('https://tinyhomeproject.onrender.com/api/default_map')
       .then(res => res.json())
-      .then(data => setMapData(data.top_sites))
+      .then(data => setMapData(data.sites))
       .catch(err => console.error('Failed to load default map data', err))
   }, [])
-
-  const getRankColor = (rank: number) => {
-    if (rank <= 100) return "#1b5e20"
-    if (rank <= 200) return "#388e3c"
-    if (rank <= 300) return "#66bb6a"
-    if (rank <= 400) return "#a5d6a7"
-    return "#e8f5e9"
-  }
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-800">
@@ -46,8 +36,8 @@ export default function HomePage() {
             of optimal sites.
           </p>
           <p className="mt-3 text-gray-700">
-            The map below shows the top 500 ranked parking lots or land parcels based on default priority weights.
-            Users can also go to the AHP tool to customize their priorities and generate personalized results.
+            The map below shows all candidate parking lots and land parcels in Oakland.
+            Use the AHP or Linear Weighting tools to customize your priorities and generate personalized rankings.
           </p>
           <button
             onClick={() => navigate('/ahp')}
@@ -58,7 +48,7 @@ export default function HomePage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-3">Map of Ranked Sites</h2>
+          <h2 className="text-xl font-semibold mb-3">Map of Candidate Sites</h2>
           <MapContainer
             center={[37.8044, -122.2712]}
             zoom={13}
@@ -73,17 +63,10 @@ export default function HomePage() {
               <CircleMarker
                 key={idx}
                 center={[site.lat, site.lon]}
-                radius={5}
-                color={getRankColor(site.rank)}
-                fillOpacity={0.9}
-              >
-                <LeafletTooltip direction="top" offset={[0, -5]} opacity={1} permanent={false}>
-                  <div>
-                    <b>Rank:</b> {site.rank}<br />
-                    <b>Score:</b> {site.final_score.toFixed(4)}
-                  </div>
-                </LeafletTooltip>
-              </CircleMarker>
+                radius={4}
+                color="#388e3c"
+                fillOpacity={0.7}
+              />
             ))}
           </MapContainer>
         </section>
