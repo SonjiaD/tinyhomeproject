@@ -11,19 +11,19 @@ import "leaflet/dist/leaflet.css";
 
 // --- Feature set (from your Streamlit Simple MCDM) ---
 const FEATURE_LABELS: Record<string, string> = {
-  homeless_service_dist: "Homeless Services Nearby",
+  homeless_service_dist: "Homeless Services",
   transit_dist: "Transit Access",
-  assisted_housing_dist: "Assisted Housing Nearby",
-  public_housing_dist: "Affordable Housing Nearby",
-  city_facility_dist: "Nearby City Facilities",
+  assisted_housing_dist: "Assisted Housing",
+  public_housing_dist: "Affordable Housing",
+  city_facility_dist: "City Facilities",
   general_plan_dist: "Urban Plan Priority Area",
-  water_fountain_dist: "Public Water Fountain Nearby",
-  man_water_dist: "Manual Water Access Nearby",
+  water_fountain_dist: "Public Water Fountains",
+  man_water_dist: "Manual Water Access",
   mobile_vending_dist: "Mobile Vending Access",
-  water_infrastructure_dist: "Access to Water Infrastructure",
-  streams_oakland_dist: "Proximity to Oakland Streams",
-  sewer_collection_dist: "Sewer Collection Distance",
-  wildfire_dist: "Wildfire Risk Proximity",
+  water_infrastructure_dist: "Water Infrastructure",
+  streams_oakland_dist: "Oakland Streams",
+  sewer_collection_dist: "Sewer Collection",
+  wildfire_dist: "Wildfire Risk",
 };
 
 type RankedSite = {
@@ -47,6 +47,7 @@ export default function LinearWeightingPage() {
   const [location, setLocation] = useState("");
   const [feedback, setFeedback] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const totalPct = useMemo(
     () => Object.values(weightsPct).reduce((a, b) => a + (b || 0), 0),
@@ -93,6 +94,8 @@ export default function LinearWeightingPage() {
         { weights: weights01 }
       );
       setMapData(resp.data.top_sites || []);
+      setSaving(false);
+      setSaveMessage('');
     } catch (e) {
       console.error(e);
       alert(
@@ -104,6 +107,7 @@ export default function LinearWeightingPage() {
   };
 
   const saveSubmission = async () => {
+    setSaving(true);
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}/api/save_ahp_submission`, {
         name: userName,
@@ -115,10 +119,11 @@ export default function LinearWeightingPage() {
         weights: weights01,
         top_sites: mapData,
       });
-      setSaveMessage("✅ Your submission was saved. Thank you!");
+      setSaveMessage("Your submission was saved. Thank you!");
     } catch (err) {
       console.error(err);
-      setSaveMessage("❌ There was a problem saving your map.");
+      setSaveMessage("There was a problem saving your map.");
+      setSaving(false);
     }
   };
 
@@ -263,10 +268,13 @@ export default function LinearWeightingPage() {
           </div>
 
           <button
+            disabled={saving}
             onClick={saveSubmission}
-            className="mt-4 px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800"
+            className={`mt-4 px-4 py-2 rounded text-white ${
+              saving ? "bg-gray-400 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
+            }`}
           >
-            Save My Map
+            {saving ? "Saved" : "Save My Map"}
           </button>
 
           {saveMessage && <div className="mt-2 text-sm text-gray-700">{saveMessage}</div>}

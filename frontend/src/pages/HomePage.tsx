@@ -13,12 +13,16 @@ interface Site {
 export default function HomePage() {
   const navigate = useNavigate()
   const [mapData, setMapData] = useState<Site[]>([])
+  const [mapError, setMapError] = useState(false)
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/api/default_map`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('API error')
+        return res.json()
+      })
       .then(data => setMapData(data.sites))
-      .catch(err => console.error('Failed to load default map data', err))
+      .catch(() => setMapError(true))
   }, [])
 
   return (
@@ -49,6 +53,11 @@ export default function HomePage() {
 
         <section>
           <h2 className="text-xl font-semibold mb-3">Map of Candidate Sites</h2>
+          {mapError && (
+            <p className="text-red-600 text-sm mb-3">
+              Could not load map data. The server may be starting up — please refresh in a moment.
+            </p>
+          )}
           <MapContainer
             center={[37.8044, -122.2712]}
             zoom={13}

@@ -7,19 +7,19 @@ import 'leaflet/dist/leaflet.css'
 
 const features = [
   "Transit Access",
-  "Homeless Services Nearby",
-  "Affordable Housing Nearby",
-  "Access to Water Infrastructure",
-  "Nearby City Facilities",
+  "Homeless Services",
+  "Affordable Housing",
+  "Water Infrastructure",
+  "City Facilities",
   "Urban Plan Priority Area"
 ]
 
 const featureMap: { [label: string]: string } = {
   "Transit Access": "transit_dist",
-  "Homeless Services Nearby": "homeless_service_dist",
-  "Affordable Housing Nearby": "public_housing_dist",
-  "Access to Water Infrastructure": "water_infrastructure_dist",
-  "Nearby City Facilities": "city_facility_dist",
+  "Homeless Services": "homeless_service_dist",
+  "Affordable Housing": "public_housing_dist",
+  "Water Infrastructure": "water_infrastructure_dist",
+  "City Facilities": "city_facility_dist",
   "Urban Plan Priority Area": "general_plan_dist",
 }
 
@@ -49,8 +49,7 @@ export default function AHPPage() {
   const [result, setResult] = useState<{ [key: string]: number }>({})
   const [mapData, setMapData] = useState<RankedSite[]>([])
   const [loading, setLoading] = useState(false)
-  const [inconsistent, setInconsistent] = useState(false)
-  const [mismatches, setMismatches] = useState<{ question: number; pair: string; current: string; suggested: string }[]>([])
+  const [consistencyRatio, setConsistencyRatio] = useState<number | null>(null)
 
   // User info for feedback
   const [userName, setUserName] = useState('')
@@ -58,6 +57,7 @@ export default function AHPPage() {
   const [location, setLocation] = useState('')
   const [feedback, setFeedback] = useState('')
   const [saveMessage, setSaveMessage] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const handleChange = (key: string, value: string) => {
     setComparisons(prev => ({ ...prev, [key]: value }))
@@ -65,20 +65,13 @@ export default function AHPPage() {
 
   const submit = async () => {
     setLoading(true)
-    setInconsistent(false)
-    setMismatches([])
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/ahp`, { comparisons })
-      const cr = response.data.consistency?.CR
-      if (cr !== null && cr > 0.10) {
-        setInconsistent(true)
-        setMismatches(response.data.mismatches || [])
-        setResult({})
-        setMapData([])
-      } else {
-        setResult(response.data.weights)
-        setMapData(response.data.top_sites)
-      }
+      setResult(response.data.weights)
+      setMapData(response.data.top_sites)
+      setConsistencyRatio(response.data.consistency?.CR ?? null)
+      setSaving(false)
+      setSaveMessage('')
     } catch (err) {
       console.error("API error:", err)
       alert("Something went wrong contacting the server. Please try again.")
@@ -146,27 +139,6 @@ export default function AHPPage() {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
           </svg>
           Computing priorities and ranking sites...
-        </div>
-      )}
-
-      {inconsistent && (
-        <div className="mt-6 max-w-3xl bg-red-50 border border-red-300 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-red-800 mb-2">Some of your answers conflict with each other</h3>
-          <p className="text-red-700 text-sm">
-            We found answers that contradict each other. Please fix the following
-            and click "Compute Priorities" again:
-          </p>
-          {mismatches.length > 0 && (
-            <ul className="mt-3 space-y-2">
-              {mismatches.map((m, i) => (
-                <li key={i} className="bg-red-100 rounded p-3 text-sm text-red-800">
-                  <p><span className="font-semibold">Question {m.question}</span> ({m.pair})</p>
-                  <p className="mt-1">You answered: <span className="font-medium">"{m.current}"</span></p>
-                  <p>To fix, change it to: <span className="font-semibold text-green-800">"{m.suggested}"</span></p>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       )}
 
@@ -264,25 +236,31 @@ export default function AHPPage() {
             </div>
 
             <button
+              disabled={saving}
               onClick={async () => {
+                setSaving(true)
                 try {
                   await axios.post(`${import.meta.env.VITE_API_URL}/api/save_ahp_submission`, {
                     name: userName,
                     occupation,
                     location,
                     feedback,
+                    consistency_ratio: consistencyRatio,
                     weights: result,
                     top_sites: mapData,
                   })
-                  setSaveMessage("✅ Your submission was saved. Thank you!")
+                  setSaveMessage("Your submission was saved. Thank you!")
                 } catch (err) {
                   console.error(err)
-                  setSaveMessage("❌ There was a problem saving your map.")
+                  setSaveMessage("There was a problem saving your map.")
+                  setSaving(false)
                 }
               }}
-              className="mt-4 px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800"
+              className={`mt-4 px-4 py-2 rounded text-white ${
+                saving ? "bg-gray-400 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
+              }`}
             >
-              Save My Map
+              {saving ? "Saved" : "Save My Map"}
             </button>
 
 

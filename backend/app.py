@@ -20,7 +20,10 @@ import json
 
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[
+    "https://tinyhomeproject.netlify.app",
+    "http://localhost:5173",
+])
 
 #for aws keys from .env file
 load_dotenv()
@@ -43,52 +46,39 @@ def to_decimal(o):
 # Map UI labels to GeoJSON columns
 feature_map = {
     "Transit Access": "transit_dist",
-    "Homeless Services Nearby": "homeless_service_dist",
-    "Affordable Housing Nearby": "public_housing_dist",
-    "Access to Water Infrastructure": "water_infrastructure_dist",
-    "Nearby City Facilities": "city_facility_dist",
+    "Homeless Services": "homeless_service_dist",
+    "Affordable Housing": "public_housing_dist",
+    "Water Infrastructure": "water_infrastructure_dist",
+    "City Facilities": "city_facility_dist",
     "Urban Plan Priority Area": "general_plan_dist"
 }
 features = list(feature_map.keys())
 score_cols = list(feature_map.values())
 
+# ── Load GeoJSON once at startup and pre-compute lat/lon ──
+print("Loading GeoJSON data...")
+_gdf = gpd.read_file("candidates_with_features.geojson").to_crs(epsg=4326)
+_utm = _gdf.to_crs(26910)
+_cent_ll = gpd.GeoSeries(_utm.geometry.centroid, crs=26910).to_crs(4326)
+_gdf["lon"] = _cent_ll.x
+_gdf["lat"] = _cent_ll.y
+CACHED_GDF = _gdf
+del _utm, _cent_ll  # free intermediate objects
+
 def min_max_normalize(series: pd.Series) -> pd.Series:
     s = pd.to_numeric(series, errors="coerce")
+    if s.notna().sum() == 0:
+        return pd.Series(np.zeros(len(s)), index=s.index)
     # Conservative: treat missing as worst (max distance)
     s = s.fillna(s.max())
-    if s.notna().sum() == 0:
-        # if truly all missing, return zeros so it doesn't affect ranking
-        return pd.Series(np.zeros(len(s)), index=s.index)
     vmin, vmax = float(s.min()), float(s.max())
     if vmax == vmin:
         return pd.Series(np.zeros(len(s)), index=s.index)
     return (s - vmin) / (vmax - vmin)
 
-def find_mismatches(w, features, comparisons):
-    """Compare each user answer against the computed weights and flag mismatches."""
-    mismatches = []
-    q_num = 0
-    for i in range(len(features)):
-        for j in range(i + 1, len(features)):
-            q_num += 1
-            key = f"{features[i]}__vs__{features[j]}"
-            val = comparisons.get(key, "Equal")
-            if val == "Equal":
-                continue
-            user_prefers_i = val in [f"{features[i]} much more", f"{features[i]} more"]
-            weights_prefer_i = w[i] > w[j]
-            if user_prefers_i != weights_prefer_i:
-                if weights_prefer_i:
-                    suggested = f"{features[i]} more"
-                else:
-                    suggested = f"{features[j]} more"
-                mismatches.append({
-                    "question": q_num,
-                    "pair": f"{features[i]} vs {features[j]}",
-                    "current": val,
-                    "suggested": suggested,
-                })
-    return mismatches
+# Pre-normalize the distance columns (values never change at runtime)
+CACHED_NORM = {col: min_max_normalize(CACHED_GDF[col]) for col in score_cols}
+print(f"Loaded {len(CACHED_GDF)} candidate sites.")
 
 @app.route("/api/ahp", methods=["POST"])
 def calculate_ahp():
@@ -126,23 +116,11 @@ def calculate_ahp():
     CI = (lambda_max - n) / (n - 1) if n > 1 else 0.0
     CR = CI / RI.get(n, 1.49) if n in RI else None
 
-    # If inconsistent, return early with mismatch details
-    if CR is not None and CR > 0.10:
-        mismatches = find_mismatches(w, features, comparisons)
-        return jsonify({
-            "consistency": {"CR": round(CR, 6)},
-            "mismatches": mismatches,
-            "weights": {},
-            "top_sites": [],
-        })
-
     weights_for_calc = { feature_map[features[i]]: float(w[i]) for i in range(n) }
     display_weights  = { k: round(v, 4) for k, v in weights_for_calc.items() }
 
-    # Load GeoJSON and normalize distance features
-    gdf = gpd.read_file("candidates_with_features.geojson").to_crs(epsg=4326)
-
-    norm_scores = [min_max_normalize(gdf[col]) for col in score_cols]
+    gdf = CACHED_GDF.copy()
+    norm_scores = [CACHED_NORM[col] for col in score_cols]
 
     # Weighted sum using full precision weights
     weight_array = np.array([weights_for_calc.get(col, 0.0) for col in score_cols])
@@ -151,13 +129,6 @@ def calculate_ahp():
 
     ranked = gdf.sort_values("final_score", ascending=True).reset_index(drop=True)
     ranked["rank"] = ranked.index + 1
-
-    # Centroids in projected CRS → back to WGS84
-    ranked_utm = ranked.to_crs(26910)
-    cent = ranked_utm.geometry.centroid
-    cent_ll = gpd.GeoSeries(cent, crs=26910).to_crs(4326)
-    ranked["lon"] = cent_ll.x
-    ranked["lat"] = cent_ll.y
 
     top_sites = ranked.head(500)[["lat", "lon", "rank", "final_score"]].to_dict(orient="records")
 
@@ -173,16 +144,7 @@ def calculate_ahp():
 
 @app.route("/api/default_map", methods=["GET"])
 def default_map():
-    gdf = gpd.read_file("candidates_with_features.geojson").to_crs(epsg=4326)
-
-    # Project to UTM for accurate centroids, then back to WGS84
-    gdf_utm = gdf.to_crs(26910)
-    cent = gdf_utm.geometry.centroid
-    cent_ll = gpd.GeoSeries(cent, crs=26910).to_crs(4326)
-    gdf["lon"] = cent_ll.x
-    gdf["lat"] = cent_ll.y
-
-    sites = gdf[["lat", "lon"]].to_dict(orient="records")
+    sites = CACHED_GDF[["lat", "lon"]].to_dict(orient="records")
     return jsonify({"sites": sites})
 
 #api call for linear weighting.tsx page
@@ -191,8 +153,7 @@ def weighted_sum_model():
     data = request.get_json()
     weights = data.get("weights", {}) or {}
 
-    # load geojson + ensure lon/lat CRS (same as AHP)
-    gdf = gpd.read_file("candidates_with_features.geojson").to_crs(epsg=4326)
+    gdf = CACHED_GDF.copy()
 
     # keep only weights that match columns present
     cols = [c for c in weights.keys() if c in gdf.columns]
@@ -201,23 +162,16 @@ def weighted_sum_model():
 
     # normalize weights to sum 1 (robust to user total != 1)
     wvals = np.array([float(weights[c]) for c in cols], dtype=float)
-    if wvals.sum() == 0:
+    if wvals.sum() < 1e-9:
         return jsonify({"error": "All weights are zero"}), 400
     wvals = wvals / wvals.sum()
 
     # normalize each column and compute weighted sum
-    norm_scores = [min_max_normalize(gdf[c]) for c in cols]
+    norm_scores = [CACHED_NORM.get(c, min_max_normalize(gdf[c])) for c in cols]
     gdf["final_score"] = sum(w * s for w, s in zip(wvals, norm_scores))
 
     ranked = gdf.sort_values("final_score", ascending=True).reset_index(drop=True)
     ranked["rank"] = ranked.index + 1
-
-    # centroids in projected CRS then back to WGS84 (same rigor as AHP)
-    ranked_utm = ranked.to_crs(26910)
-    cent = ranked_utm.geometry.centroid
-    cent_ll = gpd.GeoSeries(cent, crs=26910).to_crs(4326)
-    ranked["lon"] = cent_ll.x
-    ranked["lat"] = cent_ll.y
 
     top_sites = ranked.head(500)[["lat", "lon", "rank", "final_score"]].to_dict(orient="records")
 
@@ -254,6 +208,7 @@ def save_ahp_submission():
             'location': data.get('location'),
             'feedback': data.get('feedback'),   # optional but your UI sends it
             # convert floats → Decimal recursively
+            'consistency_ratio': to_decimal(data.get('consistency_ratio')),
             'weights': to_decimal(data.get('weights', {})),
             # keep payload modest and convert numbers
             'top_sites': to_decimal((data.get('top_sites') or [])[:300]),
