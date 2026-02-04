@@ -46,10 +46,10 @@ def to_decimal(o):
 # Map UI labels to GeoJSON columns
 feature_map = {
     "Transit Access": "transit_dist",
-    "Homeless Services": "homeless_service_dist",
+    # "Homeless Services": "homeless_service_dist",
     "Affordable Housing": "public_housing_dist",
     "Water Infrastructure": "water_infrastructure_dist",
-    "City Facilities": "city_facility_dist",
+    # "City Facilities": "city_facility_dist",
     "Urban Plan Priority Area": "general_plan_dist"
 }
 features = list(feature_map.keys())
@@ -198,13 +198,6 @@ table = dynamodb.Table(table_name)
 @app.route('/api/save_ahp_submission', methods=['POST'])
 def save_ahp_submission():
     data = request.get_json()
-
-    # Check required fields
-    required_fields = ['name', 'occupation', 'location', 'feedback']
-    for field in required_fields:
-        if not data.get(field):
-            return {'error': f'{field} is required'}, 400
-
     try:
         item = {
             'submission_id': str(uuid.uuid4()),

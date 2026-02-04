@@ -7,19 +7,19 @@ import 'leaflet/dist/leaflet.css'
 
 const features = [
   "Transit Access",
-  "Homeless Services",
+  // "Homeless Services",
   "Affordable Housing",
   "Water Infrastructure",
-  "City Facilities",
+  // "City Facilities",
   "Urban Plan Priority Area"
 ]
 
 const featureMap: { [label: string]: string } = {
   "Transit Access": "transit_dist",
-  "Homeless Services": "homeless_service_dist",
+  // "Homeless Services": "homeless_service_dist",
   "Affordable Housing": "public_housing_dist",
   "Water Infrastructure": "water_infrastructure_dist",
-  "City Facilities": "city_facility_dist",
+  // "City Facilities": "city_facility_dist",
   "Urban Plan Priority Area": "general_plan_dist",
 }
 

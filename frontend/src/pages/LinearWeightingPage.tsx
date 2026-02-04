@@ -11,11 +11,11 @@ import "leaflet/dist/leaflet.css";
 
 // --- Feature set (from your Streamlit Simple MCDM) ---
 const FEATURE_LABELS: Record<string, string> = {
-  homeless_service_dist: "Homeless Services",
+  // homeless_service_dist: "Homeless Services",
   transit_dist: "Transit Access",
   assisted_housing_dist: "Assisted Housing",
   public_housing_dist: "Affordable Housing",
-  city_facility_dist: "City Facilities",
+  // city_facility_dist: "City Facilities",
   general_plan_dist: "Urban Plan Priority Area",
   water_fountain_dist: "Public Water Fountains",
   man_water_dist: "Manual Water Access",
