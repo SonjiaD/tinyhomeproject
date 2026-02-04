@@ -5,7 +5,46 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+      },
+      colors: {
+        primary: {
+          50:  '#eef6f5',
+          100: '#dceeed',
+          200: '#b5d9d6',
+          300: '#8ec4bf',
+          400: '#5a9e9e',
+          500: '#3d8888',
+          600: '#357575',
+          700: '#2d6363',
+          800: '#234e4e',
+          900: '#1a3a3a',
+        },
+        accent: {
+          50:  '#faf1ec',
+          100: '#f5e0d6',
+          200: '#e8c4b0',
+          300: '#dba88a',
+          400: '#d08c6a',
+          500: '#c96d4f',
+          600: '#b8593a',
+          700: '#9a4a2f',
+          800: '#7c3b25',
+          900: '#5e2d1b',
+        },
+        surface: {
+          page:  '#f8f7f5',
+          card:  '#ffffff',
+          muted: '#f1efec',
+        },
+        border: {
+          DEFAULT: '#d8d4cf',
+          input:   '#c5c0b9',
+        },
+      },
+    },
   },
   plugins: [],
 }

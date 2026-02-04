@@ -1,67 +1,44 @@
-// src/pages/LinearWeightingPage.tsx
-import { useMemo, useState } from "react";
-import axios from "axios";
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-} from "recharts";
-import {
-  MapContainer, TileLayer, CircleMarker, Tooltip as LeafletTooltip,
-} from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+import { useMemo, useState } from 'react'
+import axios from 'axios'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { PageHeader } from '../components/PageHeader'
+import { SiteMap, type RankedSite } from '../components/SiteMap'
+import { SubmissionForm } from '../components/SubmissionForm'
+import { Footer } from '../components/Footer'
+import { colors } from '../lib/colors'
 
-// --- Feature set (from your Streamlit Simple MCDM) ---
 const FEATURE_LABELS: Record<string, string> = {
-  // homeless_service_dist: "Homeless Services",
-  transit_dist: "Transit Access",
-  assisted_housing_dist: "Assisted Housing",
-  public_housing_dist: "Affordable Housing",
-  // city_facility_dist: "City Facilities",
-  general_plan_dist: "Urban Plan Priority Area",
-  water_fountain_dist: "Public Water Fountains",
-  man_water_dist: "Manual Water Access",
-  mobile_vending_dist: "Mobile Vending Access",
-  water_infrastructure_dist: "Water Infrastructure",
-  streams_oakland_dist: "Oakland Streams",
-  sewer_collection_dist: "Sewer Collection",
-  wildfire_dist: "Wildfire Risk",
-};
-
-type RankedSite = {
-  lat: number;
-  lon: number;
-  rank: number;
-  final_score: number;
-};
+  transit_dist: 'Transit Access',
+  assisted_housing_dist: 'Assisted Housing',
+  public_housing_dist: 'Affordable Housing',
+  general_plan_dist: 'Urban Plan Priority Area',
+  water_fountain_dist: 'Public Water Fountains',
+  man_water_dist: 'Manual Water Access',
+  mobile_vending_dist: 'Mobile Vending Access',
+  water_infrastructure_dist: 'Water Infrastructure',
+  streams_oakland_dist: 'Oakland Streams',
+  sewer_collection_dist: 'Sewer Collection',
+  wildfire_dist: 'Wildfire Risk',
+}
 
 export default function LinearWeightingPage() {
-  // slider weights in percent [0..100]
   const [weightsPct, setWeightsPct] = useState<Record<string, number>>(
     Object.fromEntries(Object.keys(FEATURE_LABELS).map(k => [k, 0]))
-  );
-  const [mapData, setMapData] = useState<RankedSite[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  // Optional “submit your map” fields (same as AHP page)
-  const [userName, setUserName] = useState("");
-  const [occupation, setOccupation] = useState("");
-  const [location, setLocation] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [saveMessage, setSaveMessage] = useState("");
-  const [saving, setSaving] = useState(false);
+  )
+  const [mapData, setMapData] = useState<RankedSite[]>([])
+  const [loading, setLoading] = useState(false)
 
   const totalPct = useMemo(
     () => Object.values(weightsPct).reduce((a, b) => a + (b || 0), 0),
     [weightsPct]
-  );
+  )
 
-  // normalized weights (safeguard if total != 100)
   const weights01 = useMemo(() => {
-    const t = totalPct > 0 ? totalPct : 1;
-    const w = Object.fromEntries(
+    const t = totalPct > 0 ? totalPct : 1
+    return Object.fromEntries(
       Object.entries(weightsPct).map(([k, v]) => [k, (v || 0) / t])
-    );
-    return w; // sums to 1
-  }, [weightsPct, totalPct]);
+    )
+  }, [weightsPct, totalPct])
 
   const chartData = useMemo(
     () =>
@@ -70,216 +47,118 @@ export default function LinearWeightingPage() {
         weight: v,
       })),
     [weights01]
-  );
-
-  const getRankColor = (rank: number) => {
-    if (rank <= 100) return "#1b5e20";
-    if (rank <= 200) return "#388e3c";
-    if (rank <= 300) return "#66bb6a";
-    if (rank <= 400) return "#a5d6a7";
-    return "#e8f5e9";
-  };
-
-  const mapCenter: [number, number] =
-    mapData.length > 0
-      ? [mapData[0].lat, mapData[0].lon]
-      : [37.8044, -122.2712]; // Oakland fallback
+  )
 
   const generate = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      // call the new backend route (see section 2)
       const resp = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/wsm`,
         { weights: weights01 }
-      );
-      setMapData(resp.data.top_sites || []);
-      setSaving(false);
-      setSaveMessage('');
+      )
+      setMapData(resp.data.top_sites || [])
     } catch (e) {
-      console.error(e);
-      alert(
-        "There was a problem computing rankings. Please check the server logs."
-      );
+      console.error(e)
+      alert('There was a problem computing rankings. Please check the server logs.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-
-  const saveSubmission = async () => {
-    setSaving(true);
-    try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/save_ahp_submission`, {
-        name: userName,
-        occupation,
-        location,
-        feedback,
-        // store method + weights for later audit
-        method: "WSM",
-        weights: weights01,
-        top_sites: mapData,
-      });
-      setSaveMessage("Your submission was saved. Thank you!");
-    } catch (err) {
-      console.error(err);
-      setSaveMessage("There was a problem saving your map.");
-      setSaving(false);
-    }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 font-sans">
-      <h1 className="text-2xl font-bold mb-2">Linear Weighting (WSM)</h1>
-      <p className="text-gray-700 mb-6">
-        Set feature importances (0–100%). We normalize your choices to sum to 1
-        and rank sites by the weighted sum of normalized distances
-        (smaller score = better).
-      </p>
+    <div className="flex flex-col min-h-screen">
+      <PageHeader
+        title="Linear Weighting (WSM)"
+        description="Set feature importances using sliders (0–100%). We normalize your choices to sum to 1 and rank sites by the weighted sum of normalized distances."
+      />
 
-      {/* Weights UI */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-5xl">
-        {Object.entries(FEATURE_LABELS).map(([key, label]) => (
-          <div key={key} className="bg-white rounded-lg shadow p-4">
-            <label className="block text-sm font-medium mb-2">{label}</label>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={1}
-              value={weightsPct[key] ?? 0}
-              onChange={(e) =>
-                setWeightsPct((prev) => ({
-                  ...prev,
-                  [key]: Number(e.target.value),
-                }))
-              }
-              className="w-full"
-            />
-            <div className="mt-2 text-sm text-gray-700">
-              {weightsPct[key] ?? 0}%
+      <div className="max-w-5xl mx-auto px-6 py-10 w-full">
+        {/* Sliders */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {Object.entries(FEATURE_LABELS).map(([key, label]) => (
+            <div
+              key={key}
+              className="bg-white rounded-xl border border-border p-5 hover:border-primary-500/30 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-gray-800">{label}</label>
+                <span className="text-sm font-semibold text-primary-700 tabular-nums">
+                  {weightsPct[key] ?? 0}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={weightsPct[key] ?? 0}
+                onChange={e =>
+                  setWeightsPct(prev => ({
+                    ...prev,
+                    [key]: Number(e.target.value),
+                  }))
+                }
+                className="slider-custom"
+                style={{ '--value-pct': `${weightsPct[key] ?? 0}%` } as React.CSSProperties}
+              />
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <div className="mt-4 text-sm">
-        <b>Total:</b>{" "}
-        <span className={totalPct === 100 ? "text-green-700" : "text-amber-700"}>
-          {totalPct}%
-        </span>{" "}
-        (we’ll normalize automatically if not exactly 100)
-      </div>
+        <div className="mt-5 text-sm text-gray-600">
+          <span className="font-medium">Total:</span>{' '}
+          <span className={totalPct === 100 ? 'text-emerald-700 font-semibold' : 'text-amber-700 font-semibold'}>
+            {totalPct}%
+          </span>{' '}
+          <span className="text-gray-400">(normalized automatically if not 100%)</span>
+        </div>
 
-      <button
-        onClick={generate}
-        disabled={loading}
-        className={`mt-4 px-4 py-2 rounded text-white ${
-          loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
-        }`}
-      >
-        {loading ? "Ranking..." : "Generate Rankings"}
-      </button>
+        <button
+          onClick={generate}
+          disabled={loading}
+          className={`mt-5 px-5 py-2.5 rounded-lg text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+            loading
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-primary-700 hover:bg-primary-800'
+          }`}
+        >
+          {loading ? 'Ranking...' : 'Generate Rankings'}
+        </button>
 
-      {/* Bar chart of weights */}
-      <div className="mt-8 max-w-3xl">
-        <h2 className="text-xl font-semibold mb-3">Current Weights</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-            <XAxis dataKey="feature" angle={-20} textAnchor="end" interval={0} height={60} />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="weight" fill="#4a6240" />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Map */}
-      {mapData.length > 0 && (
+        {/* Chart */}
         <div className="mt-10">
-          <h2 className="text-xl font-semibold mb-3">Top 500 Ranked Sites Map</h2>
-          <MapContainer
-            center={mapCenter}
-            zoom={13}
-            scrollWheelZoom={true}
-            style={{ height: "500px", width: "100%", borderRadius: "8px" }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {mapData.map((site, idx) => (
-              <CircleMarker
-                key={idx}
-                center={[site.lat, site.lon]}
-                radius={5}
-                color={getRankColor(site.rank)}
-                fillOpacity={0.9}
-              >
-                <LeafletTooltip direction="top" offset={[0, -5]} opacity={1} permanent={false}>
-                  <div>
-                    <b>Rank:</b> {site.rank}
-                    <br />
-                    <b>Score:</b> {site.final_score.toFixed(4)}
-                  </div>
-                </LeafletTooltip>
-              </CircleMarker>
-            ))}
-          </MapContainer>
-        </div>
-      )}
-
-      {/* Save block (same pattern as AHP page) */}
-      {mapData.length > 0 && (
-        <div className="mt-10 max-w-xl">
-          <h2 className="text-xl font-semibold mb-3">Submit Your Map</h2>
-          <p className="text-gray-600 mb-4">
-            You can optionally share your preferences and ranked sites to support our research.
-          </p>
-
-          <div className="space-y-3">
-            <input
-              type="text"
-              className="w-full border px-4 py-2 rounded"
-              placeholder="Your Name (optional)"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-            />
-            <input
-              type="text"
-              className="w-full border px-4 py-2 rounded"
-              placeholder="Occupation or Role (e.g. Student, Planner)"
-              value={occupation}
-              onChange={(e) => setOccupation(e.target.value)}
-            />
-            <input
-              type="text"
-              className="w-full border px-4 py-2 rounded"
-              placeholder="Location (City, Country)"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            />
-            <textarea
-              className="w-full border px-4 py-2 rounded"
-              placeholder="Optional feedback or why you picked your weights..."
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              rows={4}
-            />
+          <h2 className="text-xl font-semibold text-gray-800 mb-3">Current Weights</h2>
+          <div className="bg-white rounded-xl border border-border p-4">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                <XAxis dataKey="feature" angle={-20} textAnchor="end" interval={0} height={60} tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="weight" fill={colors.chart.bar} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-
-          <button
-            disabled={saving}
-            onClick={saveSubmission}
-            className={`mt-4 px-4 py-2 rounded text-white ${
-              saving ? "bg-gray-400 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
-            }`}
-          >
-            {saving ? "Saved" : "Save My Map"}
-          </button>
-
-          {saveMessage && <div className="mt-2 text-sm text-gray-700">{saveMessage}</div>}
         </div>
-      )}
+
+        {/* Map */}
+        {mapData.length > 0 && (
+          <div className="mt-10">
+            <h2 className="text-xl font-semibold text-gray-800 mb-3">Top 500 Ranked Sites</h2>
+            <SiteMap sites={mapData} height="600px" ranked />
+          </div>
+        )}
+
+        {/* Submission */}
+        {mapData.length > 0 && (
+          <SubmissionForm
+            method="WSM"
+            weights={weights01}
+            topSites={mapData}
+          />
+        )}
+      </div>
+
+      <Footer />
     </div>
-  );
+  )
 }

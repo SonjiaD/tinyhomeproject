@@ -3,3 +3,55 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .slider-custom {
+    @apply w-full h-2 rounded-full cursor-pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background: linear-gradient(to right, #2d6363 var(--value-pct, 0%), #d8d4cf var(--value-pct, 0%));
+  }
+
+  .slider-custom::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 9999px;
+    background: white;
+    border: 2px solid #2d6363;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+
+  .slider-custom::-webkit-slider-thumb:hover {
+    border-color: #234e4e;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  }
+
+  .slider-custom::-moz-range-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 9999px;
+    background: white;
+    border: 2px solid #2d6363;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+
+  .slider-custom::-moz-range-track {
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: transparent;
+  }
+
+  .slider-custom:focus::-webkit-slider-thumb {
+    outline: none;
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #3d8888;
+  }
+
+  .slider-custom:focus::-moz-range-thumb {
+    outline: none;
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #3d8888;
+  }
+}
