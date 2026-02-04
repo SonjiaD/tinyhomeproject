@@ -45,7 +45,7 @@ export function SubmissionForm({ method, weights, topSites, consistencyRatio }: 
     'w-full bg-white border border-border-input rounded-lg px-4 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 hover:border-primary-500/50 transition-colors'
 
   return (
-    <div className="bg-white rounded-xl border border-border p-6 mt-10 max-w-xl">
+    <div className="bg-white rounded-xl border border-border p-6 mt-10">
       <h2 className="text-lg font-semibold text-gray-800 mb-1">Submit Your Results</h2>
       <p className="text-sm text-gray-500 mb-5">
         Optionally share your preferences and ranked sites to support research

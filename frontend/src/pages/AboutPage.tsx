@@ -22,6 +22,26 @@ export default function AboutPage() {
         </section>
 
         <section>
+          <h2 className="text-xl font-semibold text-gray-800 mb-3">What Is a Tiny Home Parklet?</h2>
+          <p className="text-gray-600 leading-relaxed mb-4">
+            A vertical parklet is a concept that places tiny homes above existing parking lots,
+            preserving parking capacity while adding dignified housing and green rooftop space.
+            The design integrates stairway access, landscaping, and compact living units into
+            underused urban infrastructure.
+          </p>
+          <div className="rounded-xl overflow-hidden border border-border shadow-sm">
+            <img
+              src="/verticalParklet.png"
+              alt="Cross-section rendering of a vertical parklet concept showing a tiny home elevated above a parking lot with a green rooftop garden"
+              className="w-full"
+            />
+          </div>
+          <p className="mt-2 text-xs text-gray-400">
+            Concept rendering of a vertical parklet design for Oakland.
+          </p>
+        </section>
+
+        <section>
           <h2 className="text-xl font-semibold text-gray-800 mb-3">Our Approach</h2>
           <p className="text-gray-600 leading-relaxed mb-6">
             We use Multi-Criteria Decision Making (MCDM) methods to rank potential sites based on

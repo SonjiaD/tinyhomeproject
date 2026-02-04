@@ -69,9 +69,9 @@ export default function AHPPage() {
         description="Compare features in pairs to express your priorities. The Analytic Hierarchy Process computes mathematically consistent weights from your comparisons."
       />
 
-      <div className="max-w-5xl mx-auto px-6 py-10 w-full">
+      <div className="max-w-3xl mx-auto px-6 py-10 w-full">
         {/* Comparison cards */}
-        <div className="grid grid-cols-1 gap-5 max-w-3xl">
+        <div className="grid grid-cols-1 gap-5">
           {allPairs(features).map(([f1, f2], idx) => {
             const key = `${f1}__vs__${f2}`
             const qNum = idx + 1
@@ -127,7 +127,7 @@ export default function AHPPage() {
         {Object.keys(result).length > 0 && (
           <div className="mt-10">
             <h2 className="text-xl font-semibold text-gray-800 mb-3">Computed Weights</h2>
-            <div className="bg-white rounded-xl border border-border p-4 max-w-xl">
+            <div className="bg-white rounded-xl border border-border p-4">
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart
                   data={Object.entries(result).map(([k, v]) => ({ feature: reverseMap[k] || k, weight: v }))}
@@ -154,24 +154,29 @@ export default function AHPPage() {
           </div>
         )}
 
-        {/* Map */}
-        {mapData.length > 0 && (
-          <div className="mt-10">
-            <h2 className="text-xl font-semibold text-gray-800 mb-3">Top 500 Ranked Sites</h2>
-            <SiteMap sites={mapData} height="600px" ranked />
-          </div>
-        )}
+      </div>
 
-        {/* Submission */}
-        {mapData.length > 0 && (
+      {/* Map - wider than the form content */}
+      {mapData.length > 0 && (
+        <div className="max-w-5xl mx-auto px-6 mt-10 w-full">
+          <h2 className="text-xl font-semibold text-gray-800 mb-3">Top 500 Ranked Sites</h2>
+          <SiteMap sites={mapData} height="600px" ranked />
+        </div>
+      )}
+
+      {/* Submission - back to narrow width */}
+      {mapData.length > 0 && (
+        <div className="max-w-3xl mx-auto px-6 w-full">
           <SubmissionForm
             method="AHP"
             weights={result}
             topSites={mapData}
             consistencyRatio={consistencyRatio}
           />
-        )}
-      </div>
+        </div>
+      )}
+
+      <div className="pb-16" />
 
       <Footer />
     </div>
