@@ -140,23 +140,28 @@ export default function LinearWeightingPage() {
           </div>
         </div>
 
-        {/* Map */}
-        {mapData.length > 0 && (
-          <div className="mt-10">
-            <h2 className="text-xl font-semibold text-gray-800 mb-3">Top 500 Ranked Sites</h2>
-            <SiteMap sites={mapData} height="600px" ranked />
-          </div>
-        )}
+      </div>
 
-        {/* Submission */}
-        {mapData.length > 0 && (
+      {/* Map - full width */}
+      {mapData.length > 0 && (
+        <div className="max-w-5xl mx-auto px-6 mt-10 w-full">
+          <h2 className="text-xl font-semibold text-gray-800 mb-3">Top 500 Ranked Sites</h2>
+          <SiteMap sites={mapData} height="600px" ranked />
+        </div>
+      )}
+
+      {/* Submission - narrower to match AHP */}
+      {mapData.length > 0 && (
+        <div className="max-w-3xl mx-auto px-6 w-full">
           <SubmissionForm
             method="WSM"
             weights={weights01}
             topSites={mapData}
           />
-        )}
-      </div>
+        </div>
+      )}
+
+      <div className="pb-16" />
 
       <Footer />
     </div>

@@ -4,20 +4,8 @@ import numpy as np
 import geopandas as gpd
 import pandas as pd
 import os
-
-#for the aws s3 bucket
 from dotenv import load_dotenv
-
-#dynamodb table writer
-import boto3
-import uuid
-
-import datetime
-
-#fixing error with AWS DynamoDB Decimal type
-from decimal import Decimal
-import json 
-
+from supabase import create_client
 
 app = Flask(__name__)
 CORS(app, origins=[
@@ -25,31 +13,19 @@ CORS(app, origins=[
     "http://localhost:5173",
 ])
 
-#for aws keys from .env file
+# Load environment variables
 load_dotenv()
 
-aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-aws_region = os.getenv("AWS_REGION")
-table_name = os.getenv("DYNAMODB_TABLE")
-
-#helper
-def to_decimal(o):
-    if isinstance(o, float) or isinstance(o, np.floating):
-        return Decimal(str(o))              # keep precision
-    if isinstance(o, dict):
-        return {k: to_decimal(v) for k, v in o.items()}
-    if isinstance(o, list):
-        return [to_decimal(x) for x in o]
-    return o
+# Supabase setup
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_KEY")
+supabase = create_client(supabase_url, supabase_key) if supabase_url and supabase_key else None
 
 # Map UI labels to GeoJSON columns
 feature_map = {
     "Transit Access": "transit_dist",
-    # "Homeless Services": "homeless_service_dist",
     "Affordable Housing": "public_housing_dist",
     "Water Infrastructure": "water_infrastructure_dist",
-    # "City Facilities": "city_facility_dist",
     "Urban Plan Priority Area": "general_plan_dist"
 }
 features = list(feature_map.keys())
@@ -63,20 +39,19 @@ _cent_ll = gpd.GeoSeries(_utm.geometry.centroid, crs=26910).to_crs(4326)
 _gdf["lon"] = _cent_ll.x
 _gdf["lat"] = _cent_ll.y
 CACHED_GDF = _gdf
-del _utm, _cent_ll  # free intermediate objects
+del _utm, _cent_ll
 
 def min_max_normalize(series: pd.Series) -> pd.Series:
     s = pd.to_numeric(series, errors="coerce")
     if s.notna().sum() == 0:
         return pd.Series(np.zeros(len(s)), index=s.index)
-    # Conservative: treat missing as worst (max distance)
     s = s.fillna(s.max())
     vmin, vmax = float(s.min()), float(s.max())
     if vmax == vmin:
         return pd.Series(np.zeros(len(s)), index=s.index)
     return (s - vmin) / (vmax - vmin)
 
-# Pre-normalize the distance columns (values never change at runtime)
+# Pre-normalize the distance columns
 CACHED_NORM = {col: min_max_normalize(CACHED_GDF[col]) for col in score_cols}
 print(f"Loaded {len(CACHED_GDF)} candidate sites.")
 
@@ -87,7 +62,7 @@ def calculate_ahp():
     size = len(features)
     ahp_matrix = np.ones((size, size))
 
-    # Build pairwise comparison matrix (5-level compressed scale)
+    # Build pairwise comparison matrix
     for i, f1 in enumerate(features):
         for j, f2 in enumerate(features):
             if i >= j:
@@ -122,7 +97,6 @@ def calculate_ahp():
     gdf = CACHED_GDF.copy()
     norm_scores = [CACHED_NORM[col] for col in score_cols]
 
-    # Weighted sum using full precision weights
     weight_array = np.array([weights_for_calc.get(col, 0.0) for col in score_cols])
     weight_array = weight_array / weight_array.sum()
     gdf["final_score"] = sum(wi * si for wi, si in zip(weight_array, norm_scores))
@@ -147,7 +121,6 @@ def default_map():
     sites = CACHED_GDF[["lat", "lon"]].to_dict(orient="records")
     return jsonify({"sites": sites})
 
-#api call for linear weighting.tsx page
 @app.route("/api/wsm", methods=["POST"])
 def weighted_sum_model():
     data = request.get_json()
@@ -155,18 +128,15 @@ def weighted_sum_model():
 
     gdf = CACHED_GDF.copy()
 
-    # keep only weights that match columns present
     cols = [c for c in weights.keys() if c in gdf.columns]
     if not cols:
         return jsonify({"error": "No valid weight columns provided"}), 400
 
-    # normalize weights to sum 1 (robust to user total != 1)
     wvals = np.array([float(weights[c]) for c in cols], dtype=float)
     if wvals.sum() < 1e-9:
         return jsonify({"error": "All weights are zero"}), 400
     wvals = wvals / wvals.sum()
 
-    # normalize each column and compute weighted sum
     norm_scores = [CACHED_NORM.get(c, min_max_normalize(gdf[c])) for c in cols]
     gdf["final_score"] = sum(w * s for w, s in zip(wvals, norm_scores))
 
@@ -174,50 +144,41 @@ def weighted_sum_model():
     ranked["rank"] = ranked.index + 1
 
     top_sites = ranked.head(500)[["lat", "lon", "rank", "final_score"]].to_dict(orient="records")
-
-    # return the normalized weights used (for display/saving if desired)
     display_weights = { cols[i]: round(float(wvals[i]), 4) for i in range(len(cols)) }
 
     return jsonify({"weights": display_weights, "top_sites": top_sites})
 
-
-@app.route("/healthz") #for cronjobs
+@app.route("/healthz")
 def healthz():
     return "OK", 200
 
-#for dynamodb table writer
-# Initialize DynamoDB client
-dynamodb = boto3.resource(
-    "dynamodb",
-    region_name=aws_region or "us-west-1",
-    aws_access_key_id=aws_access_key_id,
-    aws_secret_access_key=aws_secret_access_key,
-)
-table = dynamodb.Table(table_name)
-
 @app.route('/api/save_ahp_submission', methods=['POST'])
 def save_ahp_submission():
+    if not supabase:
+        return {'error': 'Database not configured'}, 500
+
     data = request.get_json()
     try:
-        item = {
-            'submission_id': str(uuid.uuid4()),
-            'timestamp': datetime.datetime.now(datetime.UTC).isoformat(),
-            'method': data.get('method', 'AHP'),
+        # Prepare the submission data
+        submission = {
+            'name': data.get('name'),
             'occupation': data.get('occupation'),
             'location': data.get('location'),
             'feedback': data.get('feedback'),
-            # convert floats → Decimal recursively
-            'consistency_ratio': to_decimal(data.get('consistency_ratio', 0)),
-            'weights': to_decimal(data.get('weights', {})),
-            # keep payload modest and convert numbers
-            'top_sites': to_decimal((data.get('top_sites') or [])[:300]),
+            'method': data.get('method', 'AHP'),
+            'consistency_ratio': data.get('consistency_ratio'),
+            'weights': data.get('weights', {}),
+            'top_sites': (data.get('top_sites') or [])[:300],  # Limit to 300 sites
         }
-        table.put_item(Item=item)
+
+        # Insert into Supabase
+        result = supabase.table('submissions').insert(submission).execute()
+
         return {'status': 'success'}, 200
     except Exception as e:
-        print(f"Error saving to DynamoDB: {e}")
+        print(f"Error saving to Supabase: {e}")
         return {'error': str(e)}, 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))  # Use Render-provided port
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
