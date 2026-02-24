@@ -35,14 +35,13 @@ Now rebuilt with a modern architecture:
 
 #### ⚙️ Backend
 - **Flask** (Python)
-- **DynamoDB** (AWS) for storing submissions
-- **Boto3** for AWS interactions
+- **Supabase** (PostgreSQL) for storing submissions
 - **CORS + .env** for secure deployment
 
 #### ☁️ Deployment
 - **Frontend:** [Netlify](https://www.netlify.com/)
 - **Backend:** [Render](https://render.com/)
-- **Database:** AWS DynamoDB (`TinyHomeSubmissions` table)
+- **Database:** [Supabase](https://supabase.com/) (PostgreSQL)
 
 ---
 
@@ -95,12 +94,10 @@ python app.py
 
 The backend runs on `http://localhost:10000`.
 
-> You also need a `backend/.env` file with your AWS credentials:
+> You also need a `backend/.env` file with your Supabase credentials:
 > ```ini
-> AWS_ACCESS_KEY_ID=your-access-key
-> AWS_SECRET_ACCESS_KEY=your-secret-key
-> AWS_REGION=us-west-1
-> DYNAMODB_TABLE=TinyHomeSubmissions
+> SUPABASE_URL=your-supabase-project-url
+> SUPABASE_KEY=your-supabase-anon-key
 > ```
 
 ### 3. Frontend (React) — Terminal 2
