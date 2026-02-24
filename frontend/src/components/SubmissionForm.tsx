@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import type { RankedSite } from './SiteMap'
 
@@ -16,7 +16,14 @@ export function SubmissionForm({ method, weights, topSites, consistencyRatio }: 
   const [feedback, setFeedback] = useState('')
   const [saveMessage, setSaveMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
   const [isError, setIsError] = useState(false)
+
+  // Reset submission state when weights change (user recalculated)
+  useEffect(() => {
+    setSubmitted(false)
+    setSaveMessage('')
+  }, [weights])
 
   const handleSave = async () => {
     setSaving(true)
@@ -33,10 +40,12 @@ export function SubmissionForm({ method, weights, topSites, consistencyRatio }: 
         top_sites: topSites,
       })
       setSaveMessage('Your submission was saved. Thank you!')
+      setSubmitted(true)
     } catch (err) {
       console.error(err)
       setSaveMessage('There was a problem saving your submission.')
       setIsError(true)
+    } finally {
       setSaving(false)
     }
   }
@@ -84,15 +93,15 @@ export function SubmissionForm({ method, weights, topSites, consistencyRatio }: 
       </div>
 
       <button
-        disabled={saving}
+        disabled={saving || submitted}
         onClick={handleSave}
         className={`mt-4 px-5 py-2.5 rounded-lg text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
-          saving
+          saving || submitted
             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
             : 'bg-primary-700 hover:bg-primary-800'
         }`}
       >
-        {saving ? 'Saved' : 'Save My Results'}
+        {saving ? 'Saving...' : submitted ? 'Submitted' : 'Save My Results'}
       </button>
 
       {saveMessage && (
