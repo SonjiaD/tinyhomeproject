@@ -6,6 +6,7 @@ import { Footer } from '../components/Footer'
 interface Site {
   lat: number
   lon: number
+  polygon: [number, number][]
 }
 
 const steps = [
