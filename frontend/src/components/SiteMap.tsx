@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Polygon, Tooltip as LeafletTooltip } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Tooltip as LeafletTooltip } from 'react-leaflet'
 import { getRankColor } from '../lib/colors'
 
 export type RankedSite = {
@@ -6,13 +6,11 @@ export type RankedSite = {
   lon: number
   rank: number
   final_score: number
-  polygon: [number, number][]
 }
 
 type UnrankedSite = {
   lat: number
   lon: number
-  polygon: [number, number][]
 }
 
 interface SiteMapProps {
@@ -51,14 +49,13 @@ export function SiteMap({ sites, height = '600px', ranked = false }: SiteMapProp
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {sites.map((site, idx) => {
-          if (!site.polygon || site.polygon.length === 0) return null
-
           if (ranked && isRankedSite(site)) {
             const color = getRankColor(site.rank)
             return (
-              <Polygon
+              <CircleMarker
                 key={idx}
-                positions={site.polygon}
+                center={[site.lat, site.lon]}
+                radius={6}
                 pathOptions={{
                   color,
                   fillColor: color,
@@ -72,13 +69,14 @@ export function SiteMap({ sites, height = '600px', ranked = false }: SiteMapProp
                     <div className="text-gray-600">Score: {site.final_score.toFixed(4)}</div>
                   </div>
                 </LeafletTooltip>
-              </Polygon>
+              </CircleMarker>
             )
           }
           return (
-            <Polygon
+            <CircleMarker
               key={idx}
-              positions={site.polygon}
+              center={[site.lat, site.lon]}
+              radius={3.5}
               pathOptions={{
                 color: '#2d6363',
                 fillColor: '#3d8888',
@@ -96,7 +94,7 @@ export function SiteMap({ sites, height = '600px', ranked = false }: SiteMapProp
           <div className="space-y-1">
             {LEGEND_ITEMS.map(({ color, label }) => (
               <div key={label} className="flex items-center gap-2">
-                <span className="w-4 h-2.5 shrink-0" style={{ backgroundColor: color }} />
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
                 <span className="text-xs text-gray-500">{label}</span>
               </div>
             ))}

@@ -33,23 +33,13 @@ score_cols = list(feature_map.values())
 
 # ── Load GeoJSON once at startup and pre-compute lat/lon ──
 print("Loading GeoJSON data...")
-_gdf = gpd.read_file("parking_polygons.geojson").to_crs(epsg=4326)
-
-# Calculate centroids in UTM then convert back
+_gdf = gpd.read_file("candidates_with_features.geojson").to_crs(epsg=4326)
 _utm = _gdf.to_crs(26910)
 _cent_ll = gpd.GeoSeries(_utm.geometry.centroid, crs=26910).to_crs(4326)
 _gdf["lon"] = _cent_ll.x
 _gdf["lat"] = _cent_ll.y
-del _utm, _cent_ll
-
-def get_polygon_coords(geom):
-    """Extract polygon coordinates as [[lat, lon], ...] for Leaflet."""
-    if geom.geom_type == 'Polygon':
-        return [[coord[1], coord[0]] for coord in geom.exterior.coords]
-    return []
-
-_gdf["polygon"] = _gdf.geometry.apply(get_polygon_coords)
 CACHED_GDF = _gdf
+del _utm, _cent_ll
 
 def min_max_normalize(series: pd.Series) -> pd.Series:
     s = pd.to_numeric(series, errors="coerce")
@@ -114,7 +104,7 @@ def calculate_ahp():
     ranked = gdf.sort_values("final_score", ascending=True).reset_index(drop=True)
     ranked["rank"] = ranked.index + 1
 
-    top_sites = ranked.head(500)[["lat", "lon", "rank", "final_score", "polygon"]].to_dict(orient="records")
+    top_sites = ranked.head(500)[["lat", "lon", "rank", "final_score"]].to_dict(orient="records")
 
     return jsonify({
         "weights": display_weights,
@@ -128,7 +118,7 @@ def calculate_ahp():
 
 @app.route("/api/default_map", methods=["GET"])
 def default_map():
-    sites = CACHED_GDF[["lat", "lon", "polygon"]].to_dict(orient="records")
+    sites = CACHED_GDF[["lat", "lon"]].to_dict(orient="records")
     return jsonify({"sites": sites})
 
 @app.route("/api/wsm", methods=["POST"])
@@ -153,7 +143,7 @@ def weighted_sum_model():
     ranked = gdf.sort_values("final_score", ascending=True).reset_index(drop=True)
     ranked["rank"] = ranked.index + 1
 
-    top_sites = ranked.head(500)[["lat", "lon", "rank", "final_score", "polygon"]].to_dict(orient="records")
+    top_sites = ranked.head(500)[["lat", "lon", "rank", "final_score"]].to_dict(orient="records")
     display_weights = { cols[i]: round(float(wvals[i]), 4) for i in range(len(cols)) }
 
     return jsonify({"weights": display_weights, "top_sites": top_sites})
