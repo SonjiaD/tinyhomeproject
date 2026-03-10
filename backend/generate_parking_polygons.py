@@ -19,9 +19,10 @@ import json
 import math
 from pathlib import Path
 
-# Standard parking spot dimensions (meters)
-SPOT_WIDTH = 2.4   # width of a parking spot
-SPOT_LENGTH = 5.5  # length of a parking spot
+# Visualization dimensions (meters) - scaled up 50x for visibility on map
+# Actual parking spots are ~2.4m x 5.5m but too small to see at city zoom
+SPOT_WIDTH = 120    # width for visualization (50x actual)
+SPOT_LENGTH = 275   # length for visualization (50x actual)
 
 # Distance threshold from stop signs (meters)
 STOP_SIGN_BUFFER = 10  # Don't place parklets within 10m of stop signs
