@@ -41,6 +41,7 @@ export default function SuggestPage() {
   const [pendingAddress, setPendingAddress] = useState<string | null>(null)
   const [geocoding, setGeocoding] = useState(false)
   const [panelState, setPanelState] = useState<PanelState>('closed')
+  const [svError, setSvError] = useState(false)
 
   const [name, setName] = useState('')
   const [occupation, setOccupation] = useState('')
@@ -70,6 +71,7 @@ export default function SuggestPage() {
     setOccupation('')
     setReason('')
     setError(null)
+    setSvError(false)
 
     try {
       const res = await fetch(
@@ -250,7 +252,8 @@ export default function SuggestPage() {
 
       {/* Slide-in panel */}
       <div
-        className={`fixed right-0 top-0 h-full w-80 bg-white shadow-xl z-[2000] flex flex-col
+        className={`fixed right-0 top-0 h-full w-80 bg-white z-[2000] flex flex-col
+          border-l-2 border-primary-800 shadow-[-4px_0_16px_rgba(0,0,0,0.12)]
           transition-transform duration-300 ease-in-out
           ${panelOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
@@ -266,6 +269,20 @@ export default function SuggestPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+            </div>
+
+            {/* Street view */}
+            <div className="w-full bg-gray-100 shrink-0 flex items-center justify-center" style={{ height: '160px' }}>
+              {svError ? (
+                <p className="text-xs text-gray-400 italic px-4 text-center">No street view available for this location</p>
+              ) : (
+                <img
+                  src={`https://maps.googleapis.com/maps/api/streetview?size=320x160&location=${pendingLatLng.lat},${pendingLatLng.lng}&return_error_code=true&key=${import.meta.env.VITE_GOOGLE_SV_KEY}`}
+                  alt="Street view"
+                  className="w-full h-full object-cover"
+                  onError={() => setSvError(true)}
+                />
+              )}
             </div>
 
             <div className="flex-1 p-4 flex flex-col gap-4">

@@ -41,6 +41,7 @@ export function SitePanel({ site, allBounds, voteTally, onClose, onVoteSubmitted
   const [submitting, setSubmitting] = useState(false)
   const [voted, setVoted] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [svError, setSvError] = useState(false)
 
   const isOpen = site !== null
 
@@ -80,11 +81,13 @@ export function SitePanel({ site, allBounds, voteTally, onClose, onVoteSubmitted
     setVoted(false)
     setComment('')
     setError(null)
+    setSvError(false)
   }
 
   return (
     <div
-      className={`fixed right-0 top-0 h-full w-80 bg-white shadow-xl z-[2000] flex flex-col
+      className={`fixed right-0 top-0 h-full w-80 bg-white z-[2000] flex flex-col
+        border-l-2 border-primary-800 shadow-[-4px_0_16px_rgba(0,0,0,0.12)]
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
     >
@@ -105,6 +108,20 @@ export function SitePanel({ site, allBounds, voteTally, onClose, onVoteSubmitted
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+          </div>
+
+          {/* Street view image */}
+          <div className="w-full bg-gray-100 shrink-0 flex items-center justify-center" style={{ height: '160px' }}>
+            {svError ? (
+              <p className="text-xs text-gray-400 italic px-4 text-center">No street view available for this location</p>
+            ) : (
+              <img
+                src={`https://maps.googleapis.com/maps/api/streetview?size=320x160&location=${site.lat},${site.lon}&return_error_code=true&key=${import.meta.env.VITE_GOOGLE_SV_KEY}`}
+                alt="Street view"
+                className="w-full h-full object-cover"
+                onError={() => setSvError(true)}
+              />
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-5">
