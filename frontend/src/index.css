@@ -22,6 +22,22 @@ html {
   background: #f2efe9;
 }
 
+/* Pulsing ring for selected map marker */
+@keyframes marker-pulse {
+  0% {
+    stroke-opacity: 0.7;
+    stroke-width: 3;
+  }
+  100% {
+    stroke-opacity: 0;
+    stroke-width: 18;
+  }
+}
+
+.marker-pulse-ring path {
+  animation: marker-pulse 1.5s ease-out infinite;
+}
+
 @layer components {
   .slider-custom {
     @apply w-full h-2 rounded-full cursor-pointer;

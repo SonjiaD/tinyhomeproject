@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { MapContainer, TileLayer, CircleMarker } from 'react-leaflet'
 import { getScoreColor, getVoteColor } from '../lib/voteColors'
 import type { VoteSite, VoteCountsMap, ColorMode } from '../lib/types'
@@ -61,19 +62,35 @@ export function VoteMap({
           const isSelected = site.id === selectedSiteId
           const color = getDotColor(site)
           return (
-            <CircleMarker
-              key={site.id}
-              center={[site.lat, site.lon]}
-              radius={isSelected ? 8 : 5}
-              pathOptions={{
-                color: isSelected ? '#ffffff' : color,
-                fillColor: color,
-                fillOpacity: isSelected ? 1 : 0.7,
-                weight: isSelected ? 2 : 1,
-              }}
-              eventHandlers={{ click: () => onSiteClick(site) }}
-            >
-            </CircleMarker>
+            <Fragment key={site.id}>
+              {isSelected && (
+                <CircleMarker
+                  key={`${site.id}-pulse`}
+                  center={[site.lat, site.lon]}
+                  radius={10}
+                  pathOptions={{
+                    color: '#f97316',
+                    fillColor: 'transparent',
+                    fillOpacity: 0,
+                    weight: 3,
+                  }}
+                  className="marker-pulse-ring"
+                  interactive={false}
+                />
+              )}
+              <CircleMarker
+                key={site.id}
+                center={[site.lat, site.lon]}
+                radius={isSelected ? 8 : 5}
+                pathOptions={{
+                  color: isSelected ? '#1d4f4f' : color,
+                  fillColor: isSelected ? '#ffffff' : color,
+                  fillOpacity: isSelected ? 1 : 0.7,
+                  weight: isSelected ? 2.5 : 1,
+                }}
+                eventHandlers={{ click: () => onSiteClick(site) }}
+              />
+            </Fragment>
           )
         })}
       </MapContainer>
