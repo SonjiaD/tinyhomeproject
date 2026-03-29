@@ -38,6 +38,7 @@ export function computeSiteScore(site: VoteSite, allBounds: Record<DistField, Di
 }
 
 export function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters)} m away`
-  return `${(meters / 1000).toFixed(1)} km away`
+  const feet = meters * 3.28084
+  if (feet < 5280) return `${Math.round(feet)} ft away`
+  return `${(feet / 5280).toFixed(1)} mi away`
 }
