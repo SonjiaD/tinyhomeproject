@@ -4,6 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Always reserve scrollbar gutter so nav doesn't shift between pages */
+html {
+  scrollbar-gutter: stable;
+}
+
 @layer components {
   .slider-custom {
     @apply w-full h-2 rounded-full cursor-pointer;
