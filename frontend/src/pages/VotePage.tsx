@@ -107,7 +107,7 @@ export default function VotePage() {
               <div>
                 <p className="text-sm font-semibold text-gray-800">Loading Oakland sites…</p>
                 <p className="text-xs text-gray-500 mt-1 max-w-xs">
-                  The server may be waking up — this can take up to 30 seconds. Thanks for your patience!
+                  The server may be waking up. This can take up to 30 seconds. Thanks for your patience!
                 </p>
               </div>
             </div>
