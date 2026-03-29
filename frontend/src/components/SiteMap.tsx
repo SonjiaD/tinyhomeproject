@@ -53,7 +53,7 @@ export function SiteMap({ sites, height = '600px', ranked = false }: SiteMapProp
             const color = getRankColor(site.rank)
             return (
               <CircleMarker
-                key={idx}
+                key={site.rank}
                 center={[site.lat, site.lon]}
                 radius={6}
                 pathOptions={{

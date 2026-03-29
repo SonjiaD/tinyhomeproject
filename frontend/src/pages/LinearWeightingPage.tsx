@@ -27,6 +27,7 @@ export default function LinearWeightingPage() {
   )
   const [mapData, setMapData] = useState<RankedSite[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const totalPct = useMemo(
     () => Object.values(weightsPct).reduce((a, b) => a + (b || 0), 0),
@@ -59,7 +60,7 @@ export default function LinearWeightingPage() {
       setMapData(resp.data.top_sites || [])
     } catch (e) {
       console.error(e)
-      alert('There was a problem computing rankings. Please check the server logs.')
+      setError('There was a problem computing rankings. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -112,6 +113,12 @@ export default function LinearWeightingPage() {
           </span>{' '}
           <span className="text-gray-400">(normalized automatically if not 100%)</span>
         </div>
+
+        {error && (
+          <div className="mt-4 rounded-md bg-accent-100 border border-accent-500 px-4 py-2.5">
+            <p className="text-sm text-accent-700">{error}</p>
+          </div>
+        )}
 
         <button
           onClick={generate}

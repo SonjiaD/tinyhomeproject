@@ -41,6 +41,7 @@ export default function AHPPage() {
   const [result, setResult] = useState<Record<string, number>>({})
   const [mapData, setMapData] = useState<RankedSite[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [consistencyRatio, setConsistencyRatio] = useState<number | null>(null)
 
   const handleChange = (key: string, value: string) => {
@@ -56,7 +57,7 @@ export default function AHPPage() {
       setConsistencyRatio(response.data.consistency?.CR ?? null)
     } catch (err) {
       console.error('API error:', err)
-      alert('Something went wrong contacting the server. Please try again.')
+      setError('Something went wrong contacting the server. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -100,6 +101,12 @@ export default function AHPPage() {
             )
           })}
         </div>
+
+        {error && (
+          <div className="mt-4 rounded-md bg-accent-100 border border-accent-500 px-4 py-2.5">
+            <p className="text-sm text-accent-700">{error}</p>
+          </div>
+        )}
 
         <button
           onClick={submit}
