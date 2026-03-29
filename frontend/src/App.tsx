@@ -3,8 +3,10 @@ import AHPPage from './pages/AHPPage'
 import AboutPage from './pages/AboutPage'
 import HomePage from './pages/HomePage'
 import LinearWeightingPage from './pages/LinearWeightingPage'
+import VotePage from './pages/VotePage'
 
 const navLinks = [
+  { to: '/vote', label: 'Community Vote' },
   { to: '/ahp', label: 'AHP Tool' },
   { to: '/linear', label: 'Linear Weighting' },
   { to: '/about', label: 'About' },
@@ -41,6 +43,7 @@ function App() {
 
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/vote" element={<VotePage />} />
           <Route path="/ahp" element={<AHPPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/linear" element={<LinearWeightingPage />} />

@@ -118,8 +118,55 @@ def calculate_ahp():
 
 @app.route("/api/default_map", methods=["GET"])
 def default_map():
-    sites = CACHED_GDF[["lat", "lon"]].to_dict(orient="records")
+    cols = ["lat", "lon", "id", "address", "transit_dist",
+            "water_infrastructure_dist", "city_facility_dist",
+            "homeless_service_dist"]
+    subset = CACHED_GDF[cols].copy()
+    subset["id"] = subset["id"].astype(str)
+    sites = subset.to_dict(orient="records")
     return jsonify({"sites": sites})
+
+@app.route("/api/votes", methods=["GET"])
+def get_votes():
+    if not supabase:
+        return jsonify({}), 200
+    try:
+        result = supabase.table("votes").select("site_id, support").execute()
+        counts = {}
+        for row in result.data:
+            sid = row["site_id"]
+            if sid not in counts:
+                counts[sid] = {"yes": 0, "no": 0, "total": 0}
+            if row["support"]:
+                counts[sid]["yes"] += 1
+            else:
+                counts[sid]["no"] += 1
+            counts[sid]["total"] += 1
+        return jsonify(counts), 200
+    except Exception as e:
+        print(f"Error fetching votes: {e}")
+        return jsonify({}), 200
+
+@app.route("/api/votes", methods=["POST"])
+def submit_vote():
+    if not supabase:
+        return jsonify({"error": "Database not configured"}), 500
+    data = request.get_json()
+    site_id = str(data.get("site_id", "")).strip()
+    support = data.get("support")
+    comment = (data.get("comment") or "")[:500]
+    if not site_id or support is None:
+        return jsonify({"error": "site_id and support are required"}), 400
+    try:
+        supabase.table("votes").insert({
+            "site_id": site_id,
+            "support": bool(support),
+            "comment": comment or None,
+        }).execute()
+        return jsonify({"status": "ok"}), 201
+    except Exception as e:
+        print(f"Error saving vote: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/wsm", methods=["POST"])
 def weighted_sum_model():
