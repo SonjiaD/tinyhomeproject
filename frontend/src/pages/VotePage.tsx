@@ -29,11 +29,18 @@ export default function VotePage() {
   const allBounds = useMemo(() => computeAllBounds(sites), [sites])
 
   const siteScores = useMemo(() => {
-    const scores: Record<string, number> = {}
+    const raw: Record<string, number> = {}
     for (const site of sites) {
-      scores[site.id] = computeSiteScore(site, allBounds)
+      raw[site.id] = computeSiteScore(site, allBounds)
     }
-    return scores
+    // Convert to percentile ranks (0 = worst, 1 = best) so color tiers
+    // are always evenly distributed regardless of how scores cluster
+    const sorted = Object.entries(raw).sort((a, b) => a[1] - b[1])
+    const ranks: Record<string, number> = {}
+    sorted.forEach(([id], i) => {
+      ranks[id] = sorted.length > 1 ? i / (sorted.length - 1) : 1
+    })
+    return ranks
   }, [sites, allBounds])
 
   function handleToggle(mode: ColorMode) {
@@ -61,7 +68,7 @@ export default function VotePage() {
       {/* Map area — explicit height so Leaflet renders correctly */}
       <div className="relative" style={{ height: 'calc(100vh - 140px)' }}>
         {/* Layer toggles */}
-        <div className="absolute top-3 left-3 z-[1000] flex gap-2">
+        <div className="absolute top-3 left-14 z-[1000] flex gap-2">
           <button
             onClick={() => handleToggle('score')}
             className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors shadow-sm

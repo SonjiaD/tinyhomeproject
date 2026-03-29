@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, CircleMarker, Tooltip as LeafletTooltip } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker } from 'react-leaflet'
 import { getScoreColor, getVoteColor } from '../lib/voteColors'
 import type { VoteSite, VoteCountsMap, ColorMode } from '../lib/types'
 
@@ -73,9 +73,6 @@ export function VoteMap({
               }}
               eventHandlers={{ click: () => onSiteClick(site) }}
             >
-              <LeafletTooltip direction="top" offset={[0, -8]} opacity={1}>
-                <span className="text-xs">{site.address || 'Unnamed site'}</span>
-              </LeafletTooltip>
             </CircleMarker>
           )
         })}
