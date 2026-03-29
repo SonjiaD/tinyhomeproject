@@ -226,6 +226,35 @@ def save_ahp_submission():
         print(f"Error saving to Supabase: {e}")
         return {'error': str(e)}, 500
 
+@app.route("/api/suggestions", methods=["GET"])
+def get_suggestions():
+    if not supabase:
+        return jsonify([]), 200
+    try:
+        result = supabase.table("suggestions").select("*").execute()
+        return jsonify(result.data), 200
+    except Exception as e:
+        print(f"Error fetching suggestions: {e}")
+        return jsonify([]), 200
+
+@app.route("/api/suggestions", methods=["POST"])
+def submit_suggestion():
+    if not supabase:
+        return jsonify({"error": "Database not configured"}), 500
+    data = request.get_json()
+    try:
+        supabase.table("suggestions").insert({
+            "lat": float(data["lat"]),
+            "lng": float(data["lng"]),
+            "name": (data.get("name") or "")[:200] or None,
+            "occupation": (data.get("occupation") or "")[:200] or None,
+            "reason": (data.get("reason") or "")[:500] or None,
+        }).execute()
+        return jsonify({"status": "ok"}), 201
+    except Exception as e:
+        print(f"Error saving suggestion: {e}")
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
