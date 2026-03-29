@@ -9,6 +9,19 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Fix Leaflet tile seam artifacts (white lines between tiles) */
+.leaflet-tile {
+  outline: 1px solid transparent;
+}
+.leaflet-tile-pane {
+  transform: translateZ(0);
+  will-change: transform;
+}
+/* Match container background to OSM tile edge color so any residual gaps are invisible */
+.leaflet-container {
+  background: #f2efe9;
+}
+
 @layer components {
   .slider-custom {
     @apply w-full h-2 rounded-full cursor-pointer;
