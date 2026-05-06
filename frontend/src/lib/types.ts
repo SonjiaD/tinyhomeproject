@@ -18,3 +18,10 @@ export interface VoteTally {
 export type VoteCountsMap = Record<string, VoteTally>
 
 export type ColorMode = 'neutral' | 'score' | 'votes'
+
+export interface ParkingPolygon {
+  id: string
+  parent_id: string
+  address: string
+  coordinates: [number, number][]  // [lat, lon][] — Leaflet format
+}

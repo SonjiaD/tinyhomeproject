@@ -5,12 +5,14 @@ import HomePage from './pages/HomePage'
 import LinearWeightingPage from './pages/LinearWeightingPage'
 import VotePage from './pages/VotePage'
 import SuggestPage from './pages/SuggestPage'
+import PolygonMapPage from './pages/PolygonMapPage'
 
 const navLinks = [
   { to: '/vote', label: 'Community Vote' },
   { to: '/suggest', label: 'Suggest a Location' },
   { to: '/ahp', label: 'AHP Tool' },
   { to: '/linear', label: 'Linear Weighting' },
+  { to: '/polygon-map', label: 'Parking Spots' },
   { to: '/about', label: 'About' },
 ]
 
@@ -50,6 +52,7 @@ function App() {
           <Route path="/ahp" element={<AHPPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/linear" element={<LinearWeightingPage />} />
+          <Route path="/polygon-map" element={<PolygonMapPage />} />
         </Routes>
       </div>
     </Router>
