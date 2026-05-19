@@ -38,7 +38,7 @@ export default function SignupPage() {
       >
         <div
           className="absolute inset-0 bg-cover bg-center opacity-20"
-          style={{ backgroundImage: "url('/verticalParklet.png')" }}
+          style={{ backgroundImage: "url('/Location_map_Oakland_2.svg.png')" }}
         />
         <div className="relative z-10">
           <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Oakland, California</p>

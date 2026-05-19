@@ -25,26 +25,77 @@ function useCounter(target: number, active: boolean, duration = 1400) {
 // ── SVG illustrations ─────────────────────────────────────────────────────────
 function ParkingIcon({ className = '' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 80 80" className={className} fill="none">
-      <rect x="4" y="4" width="72" height="72" rx="8" fill="#1a3a3a" opacity="0.15" />
-      <rect x="12" y="20" width="56" height="40" rx="4" fill="#2d6363" opacity="0.3" />
-      <rect x="18" y="28" width="16" height="24" rx="2" fill="#2d6363" opacity="0.6" />
-      <rect x="46" y="28" width="16" height="24" rx="2" fill="#2d6363" opacity="0.6" />
-      <rect x="36" y="20" width="2" height="40" fill="white" opacity="0.4" />
-      <text x="40" y="72" textAnchor="middle" fontSize="9" fill="#1a3a3a" opacity="0.6" fontWeight="600">PARKING</text>
+    <svg viewBox="0 0 96 96" className={className} fill="none">
+      {/* Asphalt background */}
+      <rect width="96" height="96" rx="16" fill="#4a5568" />
+      <rect width="96" height="96" rx="16" fill="url(#asphalt)" opacity="0.4" />
+      {/* Lane lines */}
+      <rect x="4" y="44" width="88" height="4" rx="2" fill="#f6e05e" opacity="0.7" />
+      {/* Parking space outlines */}
+      <rect x="6" y="10" width="26" height="36" rx="3" fill="white" opacity="0.08" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" />
+      <rect x="35" y="10" width="26" height="36" rx="3" fill="white" opacity="0.08" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" />
+      <rect x="64" y="10" width="26" height="36" rx="3" fill="white" opacity="0.08" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" />
+      <rect x="6" y="52" width="26" height="36" rx="3" fill="white" opacity="0.08" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" />
+      <rect x="35" y="52" width="26" height="36" rx="3" fill="white" opacity="0.08" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" />
+      <rect x="64" y="52" width="26" height="36" rx="3" fill="white" opacity="0.08" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" />
+      {/* Car in middle spot (top row) */}
+      <rect x="39" y="14" width="18" height="28" rx="4" fill="#2d9d8f" opacity="0.9" />
+      <rect x="41" y="17" width="14" height="8" rx="2" fill="#b2f0ea" opacity="0.6" />
+      <rect x="41" y="34" width="14" height="5" rx="1" fill="#b2f0ea" opacity="0.3" />
+      <circle cx="42" cy="41" r="2.5" fill="#1a1a2e" />
+      <circle cx="54" cy="41" r="2.5" fill="#1a1a2e" />
+      {/* P sign badge */}
+      <circle cx="76" cy="76" r="12" fill="#2b6cb0" />
+      <text x="76" y="81" textAnchor="middle" fontSize="13" fill="white" fontWeight="800" fontFamily="sans-serif">P</text>
+      <defs>
+        <pattern id="asphalt" patternUnits="userSpaceOnUse" width="4" height="4">
+          <circle cx="1" cy="1" r="0.6" fill="white" opacity="0.05" />
+        </pattern>
+      </defs>
     </svg>
   )
 }
 
 function TinyHomeIcon({ className = '' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 80 80" className={className} fill="none">
-      <rect x="4" y="4" width="72" height="72" rx="8" fill="#9a4a2f" opacity="0.12" />
-      <polygon points="40,14 68,36 12,36" fill="#9a4a2f" opacity="0.7" />
-      <rect x="18" y="36" width="44" height="30" rx="2" fill="#c96d4f" opacity="0.5" />
-      <rect x="32" y="48" width="16" height="18" rx="2" fill="#1a3a3a" opacity="0.5" />
-      <rect x="22" y="42" width="12" height="10" rx="1" fill="white" opacity="0.5" />
-      <rect x="46" y="42" width="12" height="10" rx="1" fill="white" opacity="0.5" />
+    <svg viewBox="0 0 96 96" className={className} fill="none">
+      {/* Sky background */}
+      <rect width="96" height="96" rx="16" fill="#e8f4f0" />
+      {/* Ground */}
+      <rect x="0" y="72" width="96" height="24" rx="0" fill="#a8d5a2" opacity="0.5" />
+      <rect x="0" y="80" width="96" height="16" rx="0" fill="#7ec87a" opacity="0.4" />
+      {/* Trailer base / chassis */}
+      <rect x="12" y="58" width="72" height="18" rx="3" fill="#e8d5c4" stroke="#c4a882" strokeWidth="1.5" />
+      {/* Body */}
+      <rect x="14" y="34" width="68" height="26" rx="4" fill="#f5ede3" stroke="#c4a882" strokeWidth="1.5" />
+      {/* Roof */}
+      <path d="M10 36 L48 16 L86 36" fill="#c96d4f" stroke="#9a4a2f" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* Roof ridge cap */}
+      <rect x="44" y="14" width="8" height="4" rx="2" fill="#9a4a2f" opacity="0.6" />
+      {/* Left window */}
+      <rect x="19" y="39" width="16" height="12" rx="2" fill="#b2e4f5" stroke="#8cc5d8" strokeWidth="1" />
+      <line x1="27" y1="39" x2="27" y2="51" stroke="#8cc5d8" strokeWidth="0.8" />
+      <line x1="19" y1="45" x2="35" y2="45" stroke="#8cc5d8" strokeWidth="0.8" />
+      {/* Right window */}
+      <rect x="61" y="39" width="16" height="12" rx="2" fill="#b2e4f5" stroke="#8cc5d8" strokeWidth="1" />
+      <line x1="69" y1="39" x2="69" y2="51" stroke="#8cc5d8" strokeWidth="0.8" />
+      <line x1="61" y1="45" x2="77" y2="45" stroke="#8cc5d8" strokeWidth="0.8" />
+      {/* Door */}
+      <rect x="40" y="41" width="16" height="17" rx="2" fill="#c4a882" stroke="#a0855a" strokeWidth="1" />
+      <circle cx="52" cy="50" r="1.5" fill="#7a5c3a" />
+      {/* Steps */}
+      <rect x="42" y="58" width="12" height="3" rx="1" fill="#b8967a" />
+      <rect x="44" y="61" width="8" height="3" rx="1" fill="#b8967a" />
+      {/* Wheels */}
+      <circle cx="26" cy="76" r="6" fill="#2d3748" stroke="#4a5568" strokeWidth="1.5" />
+      <circle cx="26" cy="76" r="2.5" fill="#718096" />
+      <circle cx="70" cy="76" r="6" fill="#2d3748" stroke="#4a5568" strokeWidth="1.5" />
+      <circle cx="70" cy="76" r="2.5" fill="#718096" />
+      {/* Hitch */}
+      <rect x="82" y="63" width="8" height="3" rx="1.5" fill="#718096" />
+      {/* Small plants */}
+      <circle cx="8" cy="74" r="5" fill="#5a9e5a" />
+      <circle cx="88" cy="74" r="4" fill="#5a9e5a" />
     </svg>
   )
 }
@@ -198,12 +249,12 @@ function SlideStats({ active }: { active: boolean }) {
           className="flex items-center justify-center gap-12"
         >
           <div className="flex flex-col items-center gap-2">
-            <ParkingIcon className="w-16 h-16" />
+            <ParkingIcon className="w-24 h-24" />
             <p className="text-xs text-gray-400 font-medium">45,332 parking spots</p>
           </div>
           <div className="text-3xl text-gray-300 font-light">→</div>
           <div className="flex flex-col items-center gap-2">
-            <TinyHomeIcon className="w-16 h-16" />
+            <TinyHomeIcon className="w-24 h-24" />
             <p className="text-xs text-gray-400 font-medium">could be tiny homes</p>
           </div>
         </motion.div>
