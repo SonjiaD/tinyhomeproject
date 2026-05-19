@@ -6,6 +6,7 @@ import type { VoteSite, VoteTally, VoteCountsMap } from '../lib/types'
 import { computeAllBounds, type DistanceBounds } from '../lib/normalization'
 import { getVoteColor } from '../lib/voteColors'
 import { SitePanel } from '../components/SitePanel'
+import { useAuth } from '../contexts/AuthContext'
 
 const API = import.meta.env.VITE_API_URL || ''
 const MIN_ZOOM = 14
@@ -43,6 +44,7 @@ interface ParkingLayerProps {
   geojson: any
   visible: boolean
   voteCounts: VoteCountsMap
+  userVotes: Record<string, boolean>
   selectedId: string | null
   selectedIds: Set<string>
   drawModeRef: React.MutableRefObject<DrawMode>
@@ -50,7 +52,7 @@ interface ParkingLayerProps {
 }
 
 function ParkingLayer({
-  geojson, visible, voteCounts, selectedId, selectedIds, drawModeRef, onSelectId,
+  geojson, visible, voteCounts, userVotes, selectedId, selectedIds, drawModeRef, onSelectId,
 }: ParkingLayerProps) {
   const map = useMap()
   const layerRef = useRef<L.GeoJSON | null>(null)
@@ -61,18 +63,21 @@ function ParkingLayer({
   const computeStyle = useCallback((feature: any): L.PathOptions => {
     const id = feature?.properties?.id
     const isSel = id === selectedId || selectedIds.has(id)
+    const myVote = userVotes[id]
     const tally = voteCounts[id]
     let fillColor = '#3d8888'
-    if (tally && tally.total > 0) fillColor = getVoteColor(tally)
+    if      (myVote === true)           fillColor = '#16a34a'
+    else if (myVote === false)          fillColor = '#dc2626'
+    else if (tally && tally.total > 0) fillColor = getVoteColor(tally)
     if (isSel) fillColor = '#f97316'
     return {
-      renderer: canvasRenderer.current,  // PathOptions accepts renderer
-      color: isSel ? '#ea580c' : '#1a3a3a',
-      weight: isSel ? 2 : 0.5,
+      renderer: canvasRenderer.current,
+      color: isSel ? '#ea580c' : myVote === true ? '#15803d' : myVote === false ? '#b91c1c' : '#1a3a3a',
+      weight: isSel ? 2 : myVote !== undefined ? 1.5 : 0.5,
       fillColor,
-      fillOpacity: 0.78,
+      fillOpacity: 0.82,
     }
-  }, [voteCounts, selectedId, selectedIds])
+  }, [voteCounts, userVotes, selectedId, selectedIds])
 
   // Create the layer exactly once
   useEffect(() => {
@@ -195,9 +200,11 @@ function CircleDrawTool({ active, onComplete }: { active: boolean; onComplete: (
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ParkingVotePage() {
+  const { user } = useAuth()
   const [rawGeojson, setRawGeojson] = useState<any>(null)
   const [voteCounts, setVoteCounts] = useState<VoteCountsMap>({})
   const [allBounds, setAllBounds] = useState<Record<string, DistanceBounds>>({})
+  const [userVotes, setUserVotes] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
   const [zoom, setZoom] = useState(13)
 
@@ -209,6 +216,23 @@ export default function ParkingVotePage() {
 
   const [batchComment, setBatchComment] = useState('')
   const [batchSubmitting, setBatchSubmitting] = useState(false)
+
+  // Load this user's prior votes from localStorage
+  useEffect(() => {
+    if (!user?.id) return
+    const stored = localStorage.getItem('parkingVotes_v1')
+    if (!stored) return
+    const all = JSON.parse(stored) as Record<string, Record<string, boolean>>
+    setUserVotes(all[user.id] ?? {})
+  }, [user?.id])
+
+  function persistVote(siteId: string, support: boolean) {
+    if (!user?.id) return
+    const stored = localStorage.getItem('parkingVotes_v1')
+    const all = stored ? JSON.parse(stored) as Record<string, Record<string, boolean>> : {}
+    all[user.id] = { ...(all[user.id] ?? {}), [siteId]: support }
+    localStorage.setItem('parkingVotes_v1', JSON.stringify(all))
+  }
 
   // Prevent body scroll — this page is fully self-contained
   useEffect(() => {
@@ -275,6 +299,12 @@ export default function ParkingVotePage() {
         }
         return next
       })
+      setUserVotes(prev => {
+        const next = { ...prev }
+        for (const id of ids) next[id] = support
+        return next
+      })
+      for (const id of ids) persistVote(id, support)
     } finally {
       setBatchSubmitting(false); setSelectedIds(new Set()); setBatchComment('')
     }
@@ -320,6 +350,17 @@ export default function ParkingVotePage() {
             {drawMode === 'rectangle' ? 'Drag to select an area' : 'Drag to draw a circle'}
           </span>
         )}
+        <div className="flex items-center gap-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#3d8888' }} /> Not voted
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#16a34a' }} /> You supported
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#dc2626' }} /> You opposed
+          </span>
+        </div>
         <div className="ml-auto flex items-center gap-2 text-xs text-gray-400">
           <span>{rawGeojson ? rawGeojson.features.length.toLocaleString() : '—'} total spaces</span>
           {zoom < MIN_ZOOM && <span className="text-orange-500 font-medium">· Zoom in to see spaces</span>}
@@ -345,6 +386,7 @@ export default function ParkingVotePage() {
               geojson={rawGeojson}
               visible={zoom >= MIN_ZOOM}
               voteCounts={voteCounts}
+              userVotes={userVotes}
               selectedId={selectedId}
               selectedIds={selectedIds}
               drawModeRef={drawModeRef}
@@ -362,9 +404,13 @@ export default function ParkingVotePage() {
             allBounds={allBounds}
             voteTally={selectedTally}
             onClose={() => setSelectedId(null)}
-            onVoteSubmitted={(id: string, tally: VoteTally) =>
+            onVoteSubmitted={(id: string, tally: VoteTally) => {
+              const old = voteCounts[id] ?? { yes: 0, no: 0, total: 0 }
+              const support = tally.yes > old.yes
+              setUserVotes(prev => ({ ...prev, [id]: support }))
+              persistVote(id, support)
               setVoteCounts(prev => ({ ...prev, [id]: tally }))
-            }
+            }}
           />
         )}
       </div>

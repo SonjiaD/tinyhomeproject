@@ -60,6 +60,18 @@ def make_rectangle(cx: float, cy: float, length: float, width: float, bearing: f
     ])
 
 
+def classify_side(edge_geom: LineString, cands_gdf) -> 'pd.Series':
+    """Returns boolean Series: True = left of directed edge, False = right."""
+    coords = list(edge_geom.coords)
+    ax, ay = coords[0]
+    bx, by = coords[-1]
+    dx, dy = bx - ax, by - ay
+    px = cands_gdf.geometry.x - ax
+    py = cands_gdf.geometry.y - ay
+    cross = dx * py - dy * px   # >0 → left of direction, <0 → right
+    return cross >= 0
+
+
 def pack_centres(seg_len: float) -> list:
     """
     Return along-segment centre positions for parking spots.
@@ -85,7 +97,7 @@ def pack_centres(seg_len: float) -> list:
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     candidates_path = os.path.join(script_dir, "candidates_with_features.geojson")
-    output_path     = os.path.join(script_dir, "parking_polygons.geojson")
+    output_path     = os.path.join(script_dir, "..", "frontend", "public", "parking_polygons.geojson")
 
     # 1. Load candidate points ──────────────────────────────────────────────────
     print("Loading candidate points …")
@@ -134,49 +146,69 @@ def main():
             continue
 
         bearing = edge_bearing(geom)
+        rad = math.radians(bearing)
+        sin_b, cos_b = math.sin(rad), math.cos(rad)
+        HALF_W = SPOT_WIDTH / 2
 
-        # Metadata from the nearest candidate on this edge
+        # Metadata from the nearest candidates on this edge
         cands_here = assigned[assigned["index_right"] == edge_idx]
         if cands_here.empty:
             continue
-        ref = cands_here.iloc[0]
 
-        for i, dist in enumerate(centres):
-            pt = geom.interpolate(dist)
-            rect_utm = make_rectangle(pt.x, pt.y, SPOT_LENGTH, SPOT_WIDTH, bearing)
+        # Classify each candidate as left or right of the directed edge
+        is_left     = classify_side(geom, cands_here)
+        left_cands  = cands_here[is_left]
+        right_cands = cands_here[~is_left]
 
-            # Reproject to WGS84
-            rect_wgs = (
-                gpd.GeoDataFrame(geometry=[rect_utm], crs=UTM_CRS)
-                .to_crs(WGS84_CRS)
-                .geometry.iloc[0]
-            )
+        sides = []
+        if not right_cands.empty: sides.append((+1, "R", right_cands.iloc[0]))
+        if not left_cands.empty:  sides.append((-1, "L", left_cands.iloc[0]))
+        if not sides:             sides = [(+1, "R", cands_here.iloc[0])]  # fallback
 
-            # GeoJSON requires closed rings: first point == last point
-            exterior = list(rect_wgs.exterior.coords)  # [(lon, lat), ..., (lon, lat)]
-            ring = [[lon, lat] for lon, lat in exterior]
-            if ring[0] != ring[-1]:
-                ring.append(ring[0])
+        for side_sign, side_label, ref in sides:
+            # Perpendicular to bearing: right=(sin_b, −cos_b), left=(−sin_b, cos_b)
+            perp_x = side_sign * sin_b
+            perp_y = -side_sign * cos_b
 
-            features.append({
-                "type": "Feature",
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [ring],
-                },
-                "properties": {
-                    "id":           f"{ref['id']}_{i}",
-                    "parent_id":    str(ref["id"]),
-                    "address":      str(ref.get("address", "")),
-                    "spot_index":   i,
-                    "bearing_deg":  round(bearing, 2),
-                    "transit_dist": float(ref.get("transit_dist") or 0),
-                    "water_infrastructure_dist": float(ref.get("water_infrastructure_dist") or 0),
-                    "city_facility_dist":        float(ref.get("city_facility_dist") or 0),
-                    "homeless_service_dist":     float(ref.get("homeless_service_dist") or 0),
-                },
-            })
-            total += 1
+            for i, dist in enumerate(centres):
+                pt = geom.interpolate(dist)
+                cx = pt.x + HALF_W * perp_x
+                cy = pt.y + HALF_W * perp_y
+                rect_utm = make_rectangle(cx, cy, SPOT_LENGTH, SPOT_WIDTH, bearing)
+
+                # Reproject to WGS84
+                rect_wgs = (
+                    gpd.GeoDataFrame(geometry=[rect_utm], crs=UTM_CRS)
+                    .to_crs(WGS84_CRS)
+                    .geometry.iloc[0]
+                )
+
+                # GeoJSON requires closed rings: first point == last point
+                exterior = list(rect_wgs.exterior.coords)  # [(lon, lat), ...]
+                ring = [[lon, lat] for lon, lat in exterior]
+                if ring[0] != ring[-1]:
+                    ring.append(ring[0])
+
+                features.append({
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [ring],
+                    },
+                    "properties": {
+                        "id":           f"{ref['id']}_{side_label}_{i}",
+                        "parent_id":    str(ref["id"]),
+                        "address":      str(ref.get("address", "")),
+                        "spot_index":   i,
+                        "side":         side_label,
+                        "bearing_deg":  round(bearing, 2),
+                        "transit_dist": float(ref.get("transit_dist") or 0),
+                        "water_infrastructure_dist": float(ref.get("water_infrastructure_dist") or 0),
+                        "city_facility_dist":        float(ref.get("city_facility_dist") or 0),
+                        "homeless_service_dist":     float(ref.get("homeless_service_dist") or 0),
+                    },
+                })
+                total += 1
 
     # 5. Write GeoJSON ───────────────────────────────────────────────────────────
     collection = {
