@@ -10,8 +10,8 @@ import PolygonMapPage from './pages/PolygonMapPage'
 const navLinks = [
   { to: '/vote', label: 'Community Vote' },
   { to: '/suggest', label: 'Suggest a Location' },
-  { to: '/ahp', label: 'AHP Tool' },
-  { to: '/linear', label: 'Linear Weighting' },
+  // { to: '/ahp', label: 'AHP Tool' }, // commented out these pages since they are of no use at the moment
+  // { to: '/linear', label: 'Linear Weighting' },
   { to: '/polygon-map', label: 'Parking Spots' },
   { to: '/about', label: 'About' },
 ]
