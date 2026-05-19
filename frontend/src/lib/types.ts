@@ -24,4 +24,8 @@ export interface ParkingPolygon {
   parent_id: string
   address: string
   coordinates: [number, number][]  // [lat, lon][] — Leaflet format
+  transit_dist: number
+  water_infrastructure_dist: number
+  city_facility_dist: number
+  homeless_service_dist: number
 }

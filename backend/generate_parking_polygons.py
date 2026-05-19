@@ -154,12 +154,15 @@ def main():
 
             # GeoJSON requires closed rings: first point == last point
             exterior = list(rect_wgs.exterior.coords)  # [(lon, lat), ..., (lon, lat)]
+            ring = [[lon, lat] for lon, lat in exterior]
+            if ring[0] != ring[-1]:
+                ring.append(ring[0])
 
             features.append({
                 "type": "Feature",
                 "geometry": {
                     "type": "Polygon",
-                    "coordinates": [[[lon, lat] for lon, lat in exterior]],
+                    "coordinates": [ring],
                 },
                 "properties": {
                     "id":           f"{ref['id']}_{i}",

@@ -20,9 +20,13 @@ export default function PolygonMapPage() {
           id: f.properties.id,
           parent_id: f.properties.parent_id,
           address: f.properties.address,
+          transit_dist: f.properties.transit_dist ?? 0,
+          water_infrastructure_dist: f.properties.water_infrastructure_dist ?? 0,
+          city_facility_dist: f.properties.city_facility_dist ?? 0,
+          homeless_service_dist: f.properties.homeless_service_dist ?? 0,
           // GeoJSON stores [lon, lat]; flip to [lat, lon] for Leaflet
-          // Slice off the closing duplicate point (GeoJSON closes the ring)
-          coordinates: f.geometry.coordinates[0].slice(0, -1).map(([lon, lat]: [number, number]) => [lat, lon] as [number, number]),
+          // Rings are now properly closed (last pt == first pt); Leaflet ignores the duplicate
+          coordinates: f.geometry.coordinates[0].map(([lon, lat]: [number, number]) => [lat, lon] as [number, number]),
         }))
         setPolygons(parsed)
         setTotalSpots(geojson.total_spots ?? parsed.length)

@@ -8,6 +8,7 @@ import LinearWeightingPage from './pages/LinearWeightingPage'
 import VotePage from './pages/VotePage'
 import SuggestPage from './pages/SuggestPage'
 import PolygonMapPage from './pages/PolygonMapPage'
+import ParkingVotePage from './pages/ParkingVotePage'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
@@ -17,6 +18,7 @@ const PRE_AUTH_ROUTES = ['/', '/login', '/signup', '/onboarding/goal']
 
 const navLinks = [
   { to: '/home', label: 'Home' },
+  { to: '/parking-vote', label: 'Vote on Parking' },
   { to: '/vote', label: 'Community Vote' },
   { to: '/suggest', label: 'Suggest a Location' },
   { to: '/polygon-map', label: 'Parking Spots' },
@@ -71,8 +73,9 @@ function NavBar() {
 
 function AppShell() {
   return (
-    <div className="min-h-screen bg-surface-page flex flex-col">
+    <div className="h-screen bg-surface-page flex flex-col overflow-hidden">
       <NavBar />
+      <div className="flex-1 min-h-0 flex flex-col overflow-auto">
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
@@ -87,10 +90,12 @@ function AppShell() {
         <Route path="/home" element={<AuthGuard><HomePage /></AuthGuard>} />
         <Route path="/vote" element={<AuthGuard><VotePage /></AuthGuard>} />
         <Route path="/suggest" element={<AuthGuard><SuggestPage /></AuthGuard>} />
+        <Route path="/parking-vote" element={<AuthGuard><ParkingVotePage /></AuthGuard>} />
         <Route path="/polygon-map" element={<AuthGuard><PolygonMapPage /></AuthGuard>} />
         <Route path="/ahp" element={<AuthGuard><AHPPage /></AuthGuard>} />
         <Route path="/linear" element={<AuthGuard><LinearWeightingPage /></AuthGuard>} />
       </Routes>
+      </div>
     </div>
   )
 }

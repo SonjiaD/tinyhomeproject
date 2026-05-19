@@ -186,6 +186,26 @@ def submit_vote():
         print(f"Error saving vote: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/votes/batch", methods=["POST"])
+def submit_votes_batch():
+    if not supabase:
+        return jsonify({"error": "Database not configured"}), 500
+    data = request.get_json()
+    site_ids = data.get("site_ids", [])
+    support = data.get("support")
+    comment = (data.get("comment") or "")[:500]
+    if not site_ids or support is None:
+        return jsonify({"error": "site_ids and support are required"}), 400
+    if len(site_ids) > 5000:
+        return jsonify({"error": "Too many site_ids (max 5000)"}), 400
+    try:
+        rows = [{"site_id": str(sid), "support": bool(support), "comment": comment or None} for sid in site_ids]
+        supabase.table("votes").insert(rows).execute()
+        return jsonify({"status": "ok", "count": len(rows)}), 201
+    except Exception as e:
+        print(f"Error saving batch votes: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/wsm", methods=["POST"])
 def weighted_sum_model():
     data = request.get_json()
