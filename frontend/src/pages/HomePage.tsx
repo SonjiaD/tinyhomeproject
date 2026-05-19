@@ -45,7 +45,7 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen">
       {/* Hero */}
       <section className="bg-primary-900 text-white">
-        <div className="max-w-6xl mx-auto px-6 py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-6 py-12 md:py-16">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary-200 mb-3">
             Oakland, CA &mdash; Community-Driven Site Selection
           </p>
@@ -57,7 +57,7 @@ export default function HomePage() {
             tiny home villages, balancing transit access, infrastructure, and
             community priorities.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          {/* <div className="mt-8 flex flex-wrap gap-3">
             <button
               onClick={() => navigate('/ahp')}
               className="px-6 py-2.5 bg-accent-600 hover:bg-accent-500 text-white font-medium rounded-lg transition-colors"
@@ -70,12 +70,12 @@ export default function HomePage() {
             >
               Linear Weighting
             </button>
-          </div>
+          </div> */}
         </div>
       </section>
 
       {/* How it works */}
-      <section className="bg-surface-page py-16">
+      {/* <section className="bg-surface-page py-16">
         <div className="max-w-6xl mx-auto px-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-8 text-center">
             How it works
@@ -93,7 +93,7 @@ export default function HomePage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Map */}
       <section className="bg-surface-muted py-16">

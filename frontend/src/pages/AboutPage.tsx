@@ -1,5 +1,6 @@
 import { PageHeader } from '../components/PageHeader'
 import { Footer } from '../components/Footer'
+import { FAQSection } from '../components/FAQSection'
 
 export default function AboutPage() {
   return (
@@ -31,9 +32,11 @@ export default function AboutPage() {
           </p>
           <div className="rounded-xl overflow-hidden border border-border shadow-sm">
             <img
-              src="/tinyHomeParklet.png"
+              src="/tinyHomeParklet.webp"
               alt="A tiny yellow home with a white picket fence on an Oakland street"
               className="w-full"
+              loading="eager"
+              fetchPriority="high"
             />
           </div>
           <p className="mt-2 text-xs text-gray-400">
@@ -41,7 +44,8 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <section>
+        {/* currently this section is commented out since we are not planning to use AHP or MCDM anymore in data collection */}
+        {/* <section>
           <h2 className="text-xl font-semibold text-gray-800 mb-3">Our Approach</h2>
           <p className="text-gray-600 leading-relaxed mb-6">
             We use Multi-Criteria Decision Making (MCDM) methods to rank potential sites based on
@@ -65,7 +69,7 @@ export default function AboutPage() {
               </p>
             </div>
           </div>
-        </section>
+        </section> */}
 
         <section>
           <h2 className="text-xl font-semibold text-gray-800 mb-3">Data Sources</h2>
@@ -113,6 +117,8 @@ export default function AboutPage() {
             research on participatory site selection methods.
           </p>
         </section>
+
+        <FAQSection />
       </div>
 
       <Footer />
