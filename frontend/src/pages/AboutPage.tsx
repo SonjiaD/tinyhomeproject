@@ -31,8 +31,8 @@ export default function AboutPage() {
           </p>
           <div className="rounded-xl overflow-hidden border border-border shadow-sm">
             <img
-              src="/verticalParklet.png"
-              alt="Cross-section rendering of a vertical parklet concept showing a tiny home elevated above a parking lot with a green rooftop garden"
+              src="/tinyHomeParklet.png"
+              alt="A tiny yellow home with a white picket fence on an Oakland street"
               className="w-full"
             />
           </div>

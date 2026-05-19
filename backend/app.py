@@ -5,7 +5,7 @@ import geopandas as gpd
 import pandas as pd
 import os
 from dotenv import load_dotenv
-# from supabase import create_client
+from supabase import create_client
 
 app = Flask(__name__)
 CORS(app, origins=[
@@ -17,10 +17,9 @@ CORS(app, origins=[
 load_dotenv()
 
 # Supabase setup
-# supabase_url = os.getenv("SUPABASE_URL")
-# supabase_key = os.getenv("SUPABASE_KEY")
-# supabase = create_client(supabase_url, supabase_key) if supabase_url and supabase_key else None
-supabase = None
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_KEY")
+supabase = create_client(supabase_url, supabase_key) if supabase_url and supabase_key else None
 
 # Map UI labels to GeoJSON columns
 feature_map = {
