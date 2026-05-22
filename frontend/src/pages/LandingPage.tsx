@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, type Transition } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
+import { useParkingCount } from '../lib/useParkingCount'
 
 // ── Animated counter hook ─────────────────────────────────────────────────────
 function useCounter(target: number, active: boolean, duration = 1400) {
@@ -112,7 +113,7 @@ function slideVariants(direction: number) {
 const TRANSITION: Transition = { type: 'tween', ease: [0.25, 0.46, 0.45, 0.94], duration: 0.55 }
 
 // ── Progress dots ─────────────────────────────────────────────────────────────
-function Dots({ total, current, onGo }: { total: number; current: number; onGo: (i: number) => void }) {
+function Dots({ total, current, onGo, isDark }: { total: number; current: number; onGo: (i: number) => void; isDark: boolean }) {
   return (
     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-50">
       {Array.from({ length: total }).map((_, i) => (
@@ -120,7 +121,9 @@ function Dots({ total, current, onGo }: { total: number; current: number; onGo: 
           key={i}
           onClick={() => onGo(i)}
           className={`rounded-full transition-all duration-300 ${
-            i === current ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/40 hover:bg-white/60'
+            isDark
+              ? i === current ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/40 hover:bg-white/60'
+              : i === current ? 'w-6 h-2 bg-gray-700' : 'w-2 h-2 bg-gray-300 hover:bg-gray-500'
           }`}
         />
       ))}
@@ -129,25 +132,21 @@ function Dots({ total, current, onGo }: { total: number; current: number; onGo: 
 }
 
 // ── Nav arrow buttons ─────────────────────────────────────────────────────────
-function NavArrows({ onPrev, onNext, hasPrev, hasNext }: {
-  onPrev: () => void; onNext: () => void; hasPrev: boolean; hasNext: boolean
+function NavArrows({ onPrev, onNext, hasPrev, hasNext, isDark }: {
+  onPrev: () => void; onNext: () => void; hasPrev: boolean; hasNext: boolean; isDark: boolean
 }) {
+  const base = 'fixed top-1/2 -translate-y-1/2 z-50 w-12 h-12 rounded-full flex items-center justify-center transition-all disabled:opacity-0 disabled:pointer-events-none shadow-md'
+  const theme = isDark
+    ? 'bg-white/15 border border-white/25 text-white hover:bg-white/25'
+    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
   return (
     <>
-      <button
-        onClick={onPrev}
-        disabled={!hasPrev}
-        className="fixed left-6 top-1/2 -translate-y-1/2 z-50 w-11 h-11 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all hover:bg-white/20 disabled:opacity-0 disabled:pointer-events-none"
-      >
+      <button onClick={onPrev} disabled={!hasPrev} className={`${base} ${theme} left-6`}>
         <svg viewBox="0 0 20 20" className="w-5 h-5" fill="currentColor">
           <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
         </svg>
       </button>
-      <button
-        onClick={onNext}
-        disabled={!hasNext}
-        className="fixed right-6 top-1/2 -translate-y-1/2 z-50 w-11 h-11 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all hover:bg-white/20 disabled:opacity-0 disabled:pointer-events-none"
-      >
+      <button onClick={onNext} disabled={!hasNext} className={`${base} ${theme} right-6`}>
         <svg viewBox="0 0 20 20" className="w-5 h-5" fill="currentColor">
           <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
         </svg>
@@ -220,7 +219,7 @@ function StatCard({ value, label, sub, active, delay = 0 }: {
   )
 }
 
-function SlideStats({ active }: { active: boolean }) {
+function SlideStats({ active, parkingCount }: { active: boolean; parkingCount: number }) {
   return (
     <div className="w-full h-full flex items-center justify-center" style={{ background: '#f8f7f5' }}>
       <div className="max-w-4xl w-full mx-auto px-10">
@@ -236,7 +235,7 @@ function SlideStats({ active }: { active: boolean }) {
         </motion.div>
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 mb-10">
-          <StatCard value={45332} label="On-street parking spaces" sub="in Oakland" active={active} delay={0.1} />
+          <StatCard value={parkingCount} label="On-street parking spaces" sub="estimated, in Oakland" active={active} delay={0.1} />
           <StatCard value={26251} label="New homes required" sub="by state mandate, by 2031" active={active} delay={0.2} />
           <StatCard value={3614} label="Homes permitted" sub="through 2025" active={active} delay={0.3} />
           <StatCard value={17000} label="Units short" sub="at current pace" active={active} delay={0.4} />
@@ -246,13 +245,16 @@ function SlideStats({ active }: { active: boolean }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7, duration: 0.5 }}
-          className="flex items-center justify-center gap-12"
+          className="flex items-center justify-center gap-10"
         >
           <div className="flex flex-col items-center gap-2">
             <ParkingIcon className="w-24 h-24" />
-            <p className="text-xs text-gray-400 font-medium">45,332 parking spots</p>
+            <p className="text-xs text-gray-400 font-medium">~{parkingCount.toLocaleString()} estimated parking spots</p>
           </div>
-          <div className="text-3xl text-gray-300 font-light">→</div>
+          <svg viewBox="0 0 56 20" className="w-14 h-5 text-teal-500 shrink-0" fill="none">
+            <path d="M0 10h48" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+            <path d="M44 3l8 7-8 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
           <div className="flex flex-col items-center gap-2">
             <TinyHomeIcon className="w-24 h-24" />
             <p className="text-xs text-gray-400 font-medium">could be tiny homes</p>
@@ -466,12 +468,15 @@ function SlideCTA() {
 
 // ── Main LandingPage ──────────────────────────────────────────────────────────
 const SLIDE_COUNT = 5
+const SLIDE_IS_DARK = [true, false, true, false, true]
 
 export default function LandingPage() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
   const [[current, direction], setCurrent] = useState([0, 0])
   const wheelLocked = useRef(false)
+  const rawParkingCount = useParkingCount()
+  const parkingCount = rawParkingCount ?? 0
 
   useEffect(() => {
     if (!loading && user) navigate('/home', { replace: true })
@@ -509,11 +514,12 @@ export default function LandingPage() {
     return () => window.removeEventListener('wheel', onWheel)
   }, [goNext, goPrev])
 
+  const isDark = SLIDE_IS_DARK[current]
   const variants = slideVariants(direction)
 
   const slides = [
     <SlideHero onNext={goNext} />,
-    <SlideStats active={current === 1} />,
+    <SlideStats active={current === 1} parkingCount={parkingCount} />,
     <SlideVisions />,
     <SlideHow />,
     <SlideCTA />,
@@ -523,17 +529,23 @@ export default function LandingPage() {
     <div className="fixed inset-0 overflow-hidden">
       {/* Persistent top bar */}
       <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4">
-        <span className="text-white/70 text-sm font-semibold tracking-tight">Tiny Home Siting Tool</span>
+        <span className={`text-sm font-semibold tracking-tight transition-colors ${isDark ? 'text-white/70' : 'text-gray-700'}`}>
+          Tiny Home Siting Tool
+        </span>
         <div className="flex items-center gap-3">
           <Link
             to="/login"
-            className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+            className={`text-sm font-medium transition-colors ${isDark ? 'text-white/70 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
           >
             Log in
           </Link>
           <Link
             to="/signup"
-            className="bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-semibold px-4 py-1.5 rounded-full transition-all backdrop-blur-sm"
+            className={`text-sm font-semibold px-4 py-1.5 rounded-full transition-all backdrop-blur-sm ${
+              isDark
+                ? 'bg-white/10 hover:bg-white/20 border border-white/20 text-white'
+                : 'bg-gray-900/8 hover:bg-gray-900/15 border border-gray-400 text-gray-700'
+            }`}
           >
             Sign up
           </Link>
@@ -555,8 +567,8 @@ export default function LandingPage() {
         </motion.div>
       </AnimatePresence>
 
-      <NavArrows onPrev={goPrev} onNext={goNext} hasPrev={current > 0} hasNext={current < SLIDE_COUNT - 1} />
-      <Dots total={SLIDE_COUNT} current={current} onGo={(i) => go(i)} />
+      <NavArrows onPrev={goPrev} onNext={goNext} hasPrev={current > 0} hasNext={current < SLIDE_COUNT - 1} isDark={isDark} />
+      <Dots total={SLIDE_COUNT} current={current} onGo={(i) => go(i)} isDark={isDark} />
     </div>
   )
 }

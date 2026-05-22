@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, useMap, useMapEvents, Circle, Rectangle } from
 import L, { LatLngBounds, LatLng } from 'leaflet'
 import axios from 'axios'
 import type { VoteSite, VoteTally, VoteCountsMap } from '../lib/types'
+import { useParkingCount } from '../lib/useParkingCount'
 import { computeAllBounds, type DistanceBounds } from '../lib/normalization'
 import { getVoteColor } from '../lib/voteColors'
 import { SitePanel } from '../components/SitePanel'
@@ -201,6 +202,7 @@ function CircleDrawTool({ active, onComplete }: { active: boolean; onComplete: (
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ParkingVotePage() {
   const { user } = useAuth()
+  const parkingCount = useParkingCount()
   const [rawGeojson, setRawGeojson] = useState<any>(null)
   const [voteCounts, setVoteCounts] = useState<VoteCountsMap>({})
   const [allBounds, setAllBounds] = useState<Record<string, DistanceBounds>>({})
@@ -362,7 +364,7 @@ export default function ParkingVotePage() {
           </span>
         </div>
         <div className="ml-auto flex items-center gap-2 text-xs text-gray-400">
-          <span>{rawGeojson ? rawGeojson.features.length.toLocaleString() : '—'} total spaces</span>
+          <span>{(rawGeojson?.total_spots ?? parkingCount)?.toLocaleString() ?? '—'} total spaces</span>
           {zoom < MIN_ZOOM && <span className="text-orange-500 font-medium">· Zoom in to see spaces</span>}
         </div>
       </div>
@@ -453,7 +455,9 @@ export default function ParkingVotePage() {
         <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-[9999]">
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-gray-500">Loading 45,332 parking spaces…</p>
+            <p className="text-sm text-gray-500">
+              Loading {parkingCount ? `${parkingCount.toLocaleString()} ` : ''}parking spaces…
+            </p>
           </div>
         </div>
       )}

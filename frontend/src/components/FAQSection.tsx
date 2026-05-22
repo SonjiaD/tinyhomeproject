@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useParkingCount } from '../lib/useParkingCount'
 
 interface FAQItem {
   question: string
@@ -203,11 +204,17 @@ function FAQItem({ question, answer }: FAQItem) {
 }
 
 export function FAQSection() {
+  const parkingCount = useParkingCount()
+  const items = faqItems.map(item =>
+    item.question.includes('45,332')
+      ? { ...item, question: item.question.replace('45,332', parkingCount ? parkingCount.toLocaleString() : '45,332') }
+      : item
+  )
   return (
     <section>
       <h2 className="text-xl font-semibold text-gray-800 mb-4">Frequently Asked Questions</h2>
       <div className="bg-white rounded-xl border border-border overflow-hidden">
-        {faqItems.map((item) => (
+        {items.map((item) => (
           <FAQItem key={item.question} question={item.question} answer={item.answer} />
         ))}
       </div>

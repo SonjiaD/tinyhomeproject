@@ -110,10 +110,18 @@ export function SitePanel({ site, allBounds, voteTally, onClose, onVoteSubmitted
             </button>
           </div>
 
-          {/* Street view image */}
-          <div className="w-full bg-gray-100 shrink-0 flex items-center justify-center" style={{ height: '160px' }}>
+          {/* Street view image — clicks open Google Maps */}
+          <a
+            href={`https://maps.google.com/?q=${site.lat},${site.lon}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="relative block w-full bg-gray-100 shrink-0 group"
+            style={{ height: '160px' }}
+          >
             {svError ? (
-              <p className="text-xs text-gray-400 italic px-4 text-center">No street view available for this location</p>
+              <div className="w-full h-full flex items-center justify-center">
+                <p className="text-xs text-gray-400 italic px-4 text-center">No street view available for this location</p>
+              </div>
             ) : (
               <img
                 src={`https://maps.googleapis.com/maps/api/streetview?size=320x160&location=${site.lat},${site.lon}&return_error_code=true&key=${import.meta.env.VITE_GOOGLE_SV_KEY}`}
@@ -122,7 +130,12 @@ export function SitePanel({ site, allBounds, voteTally, onClose, onVoteSubmitted
                 onError={() => setSvError(true)}
               />
             )}
-          </div>
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-center justify-center">
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-semibold bg-black/50 px-2 py-1 rounded">
+                Open in Google Maps ↗
+              </span>
+            </div>
+          </a>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-5">
             {/* Amenity bars */}
