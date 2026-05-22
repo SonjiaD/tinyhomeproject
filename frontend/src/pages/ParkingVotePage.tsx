@@ -288,16 +288,30 @@ export default function ParkingVotePage() {
     setSelectedId(id); setSelectedIds(new Set())
   }, [])
 
+  function unpersistVote(siteId: string) {
+    if (!user?.id) return
+    const stored = localStorage.getItem('parkingVotes_v1')
+    if (!stored) return
+    const all = JSON.parse(stored) as Record<string, Record<string, boolean>>
+    if (all[user.id]) { delete all[user.id][siteId] }
+    localStorage.setItem('parkingVotes_v1', JSON.stringify(all))
+  }
+
   async function submitBatch(support: boolean) {
     setBatchSubmitting(true)
     const ids = Array.from(selectedIds)
     try {
-      await axios.post(`${API}/api/votes/batch`, { site_ids: ids, support, comment: batchComment || null })
+      await axios.post(`${API}/api/votes/batch`, { site_ids: ids, support, comment: batchComment || null, user_id: user?.id })
       setVoteCounts(prev => {
         const next = { ...prev }
         for (const id of ids) {
           const cur = next[id] || { yes: 0, no: 0, total: 0 }
-          next[id] = { yes: cur.yes + (support ? 1 : 0), no: cur.no + (!support ? 1 : 0), total: cur.total + 1 }
+          const prev_vote = userVotes[id]
+          if (prev_vote === undefined) {
+            next[id] = { yes: cur.yes + (support ? 1 : 0), no: cur.no + (!support ? 1 : 0), total: cur.total + 1 }
+          } else if (prev_vote !== support) {
+            next[id] = { yes: cur.yes + (support ? 1 : -1), no: cur.no + (support ? -1 : 1), total: cur.total }
+          }
         }
         return next
       })
@@ -310,6 +324,33 @@ export default function ParkingVotePage() {
     } finally {
       setBatchSubmitting(false); setSelectedIds(new Set()); setBatchComment('')
     }
+  }
+
+  async function submitBatchUndo() {
+    const ids = Array.from(selectedIds)
+    if (!ids.length || !user?.id) return
+    setBatchSubmitting(true)
+    // Capture current votes before clearing
+    const prevVotes = { ...userVotes }
+    setUserVotes(prev => { const n = { ...prev }; ids.forEach(id => delete n[id]); return n })
+    ids.forEach(id => unpersistVote(id))
+    setVoteCounts(prev => {
+      const n = { ...prev }
+      ids.forEach(id => {
+        const old = n[id] ?? { yes: 0, no: 0, total: 0 }
+        const was = prevVotes[id]
+        if (was !== undefined) {
+          n[id] = { yes: old.yes - (was ? 1 : 0), no: old.no - (was ? 0 : 1), total: Math.max(0, old.total - 1) }
+        }
+      })
+      return n
+    })
+    try {
+      await axios.delete(`${API}/api/votes/batch`, { data: { site_ids: ids, user_id: user.id } })
+    } catch { /* local state already updated */ }
+    setBatchSubmitting(false)
+    setSelectedIds(new Set())
+    setBatchComment('')
   }
 
   const selectedSite = selectedId && rawGeojson
@@ -405,12 +446,17 @@ export default function ParkingVotePage() {
             site={selectedSite}
             allBounds={allBounds}
             voteTally={selectedTally}
+            myVote={selectedId ? userVotes[selectedId] : undefined}
+            userId={user?.id}
             onClose={() => setSelectedId(null)}
-            onVoteSubmitted={(id: string, tally: VoteTally) => {
-              const old = voteCounts[id] ?? { yes: 0, no: 0, total: 0 }
-              const support = tally.yes > old.yes
+            onVoteSubmitted={(id: string, tally: VoteTally, support: boolean) => {
               setUserVotes(prev => ({ ...prev, [id]: support }))
               persistVote(id, support)
+              setVoteCounts(prev => ({ ...prev, [id]: tally }))
+            }}
+            onVoteUndone={(id: string, tally: VoteTally) => {
+              setUserVotes(prev => { const n = { ...prev }; delete n[id]; return n })
+              unpersistVote(id)
               setVoteCounts(prev => ({ ...prev, [id]: tally }))
             }}
           />
@@ -433,18 +479,25 @@ export default function ParkingVotePage() {
           <button
             onClick={() => submitBatch(true)}
             disabled={batchSubmitting}
-            className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-semibold px-4 py-1.5 rounded-lg text-sm transition-colors"
+            className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold px-4 py-1.5 rounded-lg text-sm transition-colors"
           >
-            Support all
+            Support All
           </button>
           <button
             onClick={() => submitBatch(false)}
             disabled={batchSubmitting}
-            className="bg-accent-700 hover:bg-accent-600 disabled:opacity-50 text-white font-semibold px-4 py-1.5 rounded-lg text-sm transition-colors"
+            className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold px-4 py-1.5 rounded-lg text-sm transition-colors"
           >
-            Oppose all
+            Oppose All
           </button>
-          <button onClick={() => setSelectedIds(new Set())} className="text-primary-300 hover:text-white text-sm transition-colors">
+          <button
+            onClick={submitBatchUndo}
+            disabled={batchSubmitting}
+            className="border border-primary-500 text-primary-200 hover:text-white hover:border-white disabled:opacity-50 font-semibold px-4 py-1.5 rounded-lg text-sm transition-colors"
+          >
+            Clear Votes
+          </button>
+          <button onClick={() => setSelectedIds(new Set())} className="text-primary-400 hover:text-white text-sm transition-colors ml-1">
             Cancel
           </button>
         </div>

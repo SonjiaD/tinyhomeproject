@@ -141,8 +141,11 @@ export default function VotePage() {
         site={selectedSite}
         allBounds={allBounds}
         voteTally={selectedTally}
+        myVote={undefined}
+        userId={undefined}
         onClose={() => setSelectedSite(null)}
-        onVoteSubmitted={handleVoteSubmitted}
+        onVoteSubmitted={(id, tally, _support) => handleVoteSubmitted(id, tally)}
+        onVoteUndone={(_id, _tally) => {}}
       />
     </div>
   )

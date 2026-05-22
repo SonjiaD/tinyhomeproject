@@ -173,17 +173,35 @@ def submit_vote():
     site_id = str(data.get("site_id", "")).strip()
     support = data.get("support")
     comment = (data.get("comment") or "")[:500]
+    user_id = data.get("user_id") or None
     if not site_id or support is None:
         return jsonify({"error": "site_id and support are required"}), 400
     try:
-        supabase.table("votes").insert({
-            "site_id": site_id,
-            "support": bool(support),
-            "comment": comment or None,
-        }).execute()
+        row = {"site_id": site_id, "support": bool(support), "comment": comment or None}
+        if user_id:
+            row["user_id"] = str(user_id)
+            supabase.table("votes").upsert(row, on_conflict="user_id,site_id").execute()
+        else:
+            supabase.table("votes").insert(row).execute()
         return jsonify({"status": "ok"}), 201
     except Exception as e:
         print(f"Error saving vote: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/votes", methods=["DELETE"])
+def delete_vote():
+    if not supabase:
+        return jsonify({"error": "Database not configured"}), 500
+    data = request.get_json()
+    site_id = str(data.get("site_id", "")).strip()
+    user_id = str(data.get("user_id", "")).strip()
+    if not site_id or not user_id:
+        return jsonify({"error": "site_id and user_id are required"}), 400
+    try:
+        supabase.table("votes").delete().eq("site_id", site_id).eq("user_id", user_id).execute()
+        return jsonify({"status": "ok"}), 200
+    except Exception as e:
+        print(f"Error deleting vote: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/votes/batch", methods=["POST"])
@@ -194,16 +212,39 @@ def submit_votes_batch():
     site_ids = data.get("site_ids", [])
     support = data.get("support")
     comment = (data.get("comment") or "")[:500]
+    user_id = data.get("user_id") or None
     if not site_ids or support is None:
         return jsonify({"error": "site_ids and support are required"}), 400
     if len(site_ids) > 5000:
         return jsonify({"error": "Too many site_ids (max 5000)"}), 400
     try:
-        rows = [{"site_id": str(sid), "support": bool(support), "comment": comment or None} for sid in site_ids]
-        supabase.table("votes").insert(rows).execute()
+        rows = [{"site_id": str(sid), "support": bool(support), "comment": comment or None,
+                 **({"user_id": str(user_id)} if user_id else {})} for sid in site_ids]
+        if user_id:
+            supabase.table("votes").upsert(rows, on_conflict="user_id,site_id").execute()
+        else:
+            supabase.table("votes").insert(rows).execute()
         return jsonify({"status": "ok", "count": len(rows)}), 201
     except Exception as e:
         print(f"Error saving batch votes: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/votes/batch", methods=["DELETE"])
+def delete_votes_batch():
+    if not supabase:
+        return jsonify({"error": "Database not configured"}), 500
+    data = request.get_json()
+    site_ids = data.get("site_ids", [])
+    user_id = str(data.get("user_id", "")).strip()
+    if not site_ids or not user_id:
+        return jsonify({"error": "site_ids and user_id are required"}), 400
+    if len(site_ids) > 5000:
+        return jsonify({"error": "Too many site_ids (max 5000)"}), 400
+    try:
+        supabase.table("votes").delete().in_("site_id", [str(s) for s in site_ids]).eq("user_id", user_id).execute()
+        return jsonify({"status": "ok", "count": len(site_ids)}), 200
+    except Exception as e:
+        print(f"Error deleting batch votes: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/wsm", methods=["POST"])

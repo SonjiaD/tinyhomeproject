@@ -32,53 +32,80 @@ interface SitePanelProps {
   site: VoteSite | null
   allBounds: Record<string, DistanceBounds>
   voteTally: VoteTally
+  myVote: boolean | undefined
+  userId: string | undefined
   onClose: () => void
-  onVoteSubmitted: (siteId: string, newTally: VoteTally) => void
+  onVoteSubmitted: (siteId: string, newTally: VoteTally, support: boolean) => void
+  onVoteUndone: (siteId: string, newTally: VoteTally) => void
 }
 
-export function SitePanel({ site, allBounds, voteTally, onClose, onVoteSubmitted }: SitePanelProps) {
+export function SitePanel({ site, allBounds, voteTally, myVote, userId, onClose, onVoteSubmitted, onVoteUndone }: SitePanelProps) {
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [voted, setVoted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [svError, setSvError] = useState(false)
 
   const isOpen = site !== null
 
-  async function handleVote(support: boolean) {
-    if (!site) return
-    setSubmitting(true)
-    setError(null)
-
-    // Optimistic update
+  async function handleUndo() {
+    if (!site || myVote === undefined) return
     const newTally: VoteTally = {
-      yes: voteTally.yes + (support ? 1 : 0),
-      no: voteTally.no + (support ? 0 : 1),
-      total: voteTally.total + 1,
+      yes: voteTally.yes - (myVote ? 1 : 0),
+      no: voteTally.no - (myVote ? 0 : 1),
+      total: Math.max(0, voteTally.total - 1),
     }
-    onVoteSubmitted(site.id, newTally)
-
+    onVoteUndone(site.id, newTally)
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/votes`, {
-        site_id: site.id,
-        support,
-        comment: comment.trim() || null,
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/votes`, {
+        data: { site_id: site.id, user_id: userId },
       })
-      setVoted(true)
     } catch {
-      setError('Failed to save your vote. Please try again.')
-      // Roll back optimistic update
-      onVoteSubmitted(site.id, voteTally)
+      setError('Failed to undo your vote. Please try again.')
+      onVoteSubmitted(site.id, voteTally, myVote)
     } finally {
       setSubmitting(false)
     }
   }
 
-  // Reset vote state when a new site is selected
+  async function handleVote(support: boolean) {
+    if (!site) return
+    setSubmitting(true)
+    setError(null)
+    const prev = myVote
+
+    if (prev === support) {
+      await handleUndo()
+      return
+    }
+
+    const newTally: VoteTally = prev === undefined
+      ? { yes: voteTally.yes + (support ? 1 : 0), no: voteTally.no + (support ? 0 : 1), total: voteTally.total + 1 }
+      : { yes: voteTally.yes + (support ? 1 : -1), no: voteTally.no + (support ? -1 : 1), total: voteTally.total }
+
+    onVoteSubmitted(site.id, newTally, support)
+    try {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/votes`, {
+        site_id: site.id,
+        support,
+        comment: comment.trim() || null,
+        user_id: userId,
+      })
+    } catch {
+      setError('Failed to save your vote. Please try again.')
+      if (prev !== undefined) {
+        onVoteSubmitted(site.id, voteTally, prev)
+      } else {
+        onVoteUndone(site.id, voteTally)
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Reset comment/error when switching sites
   const [lastSiteId, setLastSiteId] = useState<string | null>(null)
   if (site && site.id !== lastSiteId) {
     setLastSiteId(site.id)
-    setVoted(false)
     setComment('')
     setError(null)
     setSvError(false)
@@ -142,26 +169,10 @@ export function SitePanel({ site, allBounds, voteTally, onClose, onVoteSubmitted
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Nearby Amenities</p>
               <div className="space-y-3">
-                <AmenityBar
-                  label="Transit Access"
-                  rawMeters={site.transit_dist}
-                  bounds={allBounds['transit_dist']}
-                />
-                <AmenityBar
-                  label="Water Infrastructure"
-                  rawMeters={site.water_infrastructure_dist}
-                  bounds={allBounds['water_infrastructure_dist']}
-                />
-                <AmenityBar
-                  label="Parks & City Facilities"
-                  rawMeters={site.city_facility_dist}
-                  bounds={allBounds['city_facility_dist']}
-                />
-                <AmenityBar
-                  label="Homeless Services"
-                  rawMeters={site.homeless_service_dist}
-                  bounds={allBounds['homeless_service_dist']}
-                />
+                <AmenityBar label="Transit Access" rawMeters={site.transit_dist} bounds={allBounds['transit_dist']} />
+                <AmenityBar label="Water Infrastructure" rawMeters={site.water_infrastructure_dist} bounds={allBounds['water_infrastructure_dist']} />
+                <AmenityBar label="Parks & City Facilities" rawMeters={site.city_facility_dist} bounds={allBounds['city_facility_dist']} />
+                <AmenityBar label="Homeless Services" rawMeters={site.homeless_service_dist} bounds={allBounds['homeless_service_dist']} />
               </div>
             </div>
 
@@ -180,53 +191,54 @@ export function SitePanel({ site, allBounds, voteTally, onClose, onVoteSubmitted
               </div>
             </div>
 
-            {/* Vote UI */}
+            {/* Vote UI — Reddit/Google Maps toggle pattern */}
             <div className="border-t border-gray-100 pt-4">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Your Vote</p>
 
-              {voted ? (
-                <div className="rounded-lg bg-primary-50 border border-primary-100 px-4 py-3 text-center">
-                  <p className="text-sm font-semibold text-primary-800">Thanks for your vote!</p>
-                  <p className="text-xs text-primary-600 mt-0.5">Your input helps shape the future of Oakland.</p>
+              {error && (
+                <div className="rounded-md bg-accent-100 border border-accent-500 px-3 py-2 mb-3">
+                  <p className="text-xs text-accent-700">{error}</p>
                 </div>
-              ) : (
-                <>
-                  {error && (
-                    <div className="rounded-md bg-accent-100 border border-accent-500 px-3 py-2 mb-3">
-                      <p className="text-xs text-accent-700">{error}</p>
-                    </div>
-                  )}
+              )}
 
-                  <textarea
-                    value={comment}
-                    onChange={e => setComment(e.target.value)}
-                    placeholder="Leave a comment (optional)"
-                    rows={3}
-                    maxLength={500}
-                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700
-                      placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500
-                      focus:border-transparent resize-none mb-3"
-                  />
+              <textarea
+                value={comment}
+                onChange={e => setComment(e.target.value)}
+                placeholder="Leave a comment (optional)"
+                rows={3}
+                maxLength={500}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700
+                  placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500
+                  focus:border-transparent resize-none"
+              />
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleVote(true)}
-                      disabled={submitting}
-                      className="flex-1 rounded-md bg-primary-700 text-white text-sm font-medium py-2
-                        hover:bg-primary-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {submitting ? '...' : 'Support'}
-                    </button>
-                    <button
-                      onClick={() => handleVote(false)}
-                      disabled={submitting}
-                      className="flex-1 rounded-md bg-accent-600 text-white text-sm font-medium py-2
-                        hover:bg-accent-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {submitting ? '...' : 'Oppose'}
-                    </button>
-                  </div>
-                </>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => handleVote(true)}
+                  disabled={submitting}
+                  className={`flex-1 rounded-md text-sm font-medium py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                    ${myVote === true
+                      ? 'bg-green-600 text-white hover:bg-green-700 ring-2 ring-green-200'
+                      : 'border border-green-500 text-green-700 hover:bg-green-50'}`}
+                >
+                  {myVote === true ? '✓ Supported' : 'Support'}
+                </button>
+                <button
+                  onClick={() => handleVote(false)}
+                  disabled={submitting}
+                  className={`flex-1 rounded-md text-sm font-medium py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                    ${myVote === false
+                      ? 'bg-red-600 text-white hover:bg-red-700 ring-2 ring-red-200'
+                      : 'border border-red-400 text-red-600 hover:bg-red-50'}`}
+                >
+                  {myVote === false ? '✗ Opposed' : 'Oppose'}
+                </button>
+              </div>
+
+              {myVote !== undefined && (
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  Click your vote again to undo it
+                </p>
               )}
             </div>
           </div>
