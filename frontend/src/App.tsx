@@ -19,9 +19,9 @@ const PRE_AUTH_ROUTES = ['/', '/login', '/signup', '/onboarding/goal']
 const navLinks = [
   { to: '/home', label: 'Home' },
   { to: '/parking-vote', label: 'Vote on Parking' },
-  { to: '/vote', label: 'Community Vote' },
-  { to: '/suggest', label: 'Suggest a Location' },
-  { to: '/polygon-map', label: 'Parking Spots' },
+  // { to: '/vote', label: 'Community Vote' },
+  // { to: '/suggest', label: 'Suggest a Location' },
+  // { to: '/polygon-map', label: 'Parking Spots' },
   { to: '/about', label: 'About' },
 ]
 

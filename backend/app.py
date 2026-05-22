@@ -309,6 +309,16 @@ def save_ahp_submission():
         print(f"Error saving to Supabase: {e}")
         return {'error': str(e)}, 500
 
+@app.route("/api/ping", methods=["GET"])
+def ping():
+    """Keepalive endpoint — touches Supabase so the project doesn't pause."""
+    if supabase:
+        try:
+            supabase.table("votes").select("id").limit(1).execute()
+        except Exception:
+            pass
+    return jsonify({"status": "ok"}), 200
+
 @app.route("/api/suggestions", methods=["GET"])
 def get_suggestions():
     if not supabase:
