@@ -37,6 +37,15 @@ SNAP_RADIUS  = 20.0    # Max distance (m) to snap a candidate point to a street 
 UTM_CRS      = 26910   # EPSG for UTM Zone 10N — metric operations
 WGS84_CRS    = 4326
 
+# Half road width (m) by OSM highway type — used to place spot centers at the kerb.
+# OSM edges are road centerlines; kerbs are ~half-width away.
+HALF_WIDTHS: dict[str, float] = {
+    "motorway": 9.0, "trunk": 7.5, "primary": 6.5,
+    "secondary": 5.5, "tertiary": 5.0,
+    "residential": 4.5, "unclassified": 4.5,
+    "living_street": 4.0, "service": 3.5,
+}
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -112,7 +121,7 @@ def main():
 
     # 3. Snap each candidate to its nearest street edge ─────────────────────────
     print("Snapping candidates to nearest edges …")
-    edges_slim = edges[["geometry"]].copy()
+    edges_slim = edges[["geometry", "highway"]].copy()
     joined = gpd.sjoin_nearest(
         cands, edges_slim,
         how="left",
@@ -148,7 +157,12 @@ def main():
         bearing = edge_bearing(geom)
         rad = math.radians(bearing)
         sin_b, cos_b = math.sin(rad), math.cos(rad)
-        HALF_W = SPOT_WIDTH / 2
+
+        highway_val = edge_row.get("highway", "residential")
+        if isinstance(highway_val, list):
+            highway_val = highway_val[0]
+        hw_key = str(highway_val).replace("_link", "")
+        lateral = HALF_WIDTHS.get(hw_key, 4.5)  # metres from centerline to kerb
 
         # Metadata from the nearest candidates on this edge
         cands_here = assigned[assigned["index_right"] == edge_idx]
@@ -161,19 +175,21 @@ def main():
         right_cands = cands_here[~is_left]
 
         sides = []
-        if not right_cands.empty: sides.append((+1, "R", right_cands.iloc[0]))
-        if not left_cands.empty:  sides.append((-1, "L", left_cands.iloc[0]))
-        if not sides:             sides = [(+1, "R", cands_here.iloc[0])]  # fallback
+        if not right_cands.empty: sides.append((+1, "R", right_cands))
+        if not left_cands.empty:  sides.append((-1, "L", left_cands))
+        if not sides:             sides = [(+1, "R", cands_here)]  # fallback
 
-        for side_sign, side_label, ref in sides:
+        for side_sign, side_label, side_cands in sides:
+            ref = side_cands.iloc[0]
+
             # Perpendicular to bearing: right=(sin_b, −cos_b), left=(−sin_b, cos_b)
             perp_x = side_sign * sin_b
             perp_y = -side_sign * cos_b
 
             for i, dist in enumerate(centres):
                 pt = geom.interpolate(dist)
-                cx = pt.x + HALF_W * perp_x
-                cy = pt.y + HALF_W * perp_y
+                cx = pt.x + lateral * perp_x
+                cy = pt.y + lateral * perp_y
                 rect_utm = make_rectangle(cx, cy, SPOT_LENGTH, SPOT_WIDTH, bearing)
 
                 # Reproject to WGS84
