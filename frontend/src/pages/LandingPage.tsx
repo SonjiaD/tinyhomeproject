@@ -290,7 +290,7 @@ const visions = [
     pct: 65,
     label: 'End the Affordability Crisis',
     tag: 'TRANSFORMATIVE',
-    desc: 'Enough supply to push Oakland\'s vacancy rate to 6–7% — the level at which rents actually fall.',
+    desc: 'Enough supply to push Oakland\'s vacancy rate to 6-7%, the level at which rents actually fall.',
     color: 'from-teal-900 to-teal-800',
     bar: 'bg-orange-300',
   },
@@ -354,7 +354,7 @@ const steps = [
   {
     num: '01',
     title: 'Pick your number',
-    desc: 'Choose your goal — 6,000, 18,000, or 30,000 homes — and commit to a vision for Oakland.',
+    desc: 'Choose your goal: 6,000, 18,000, or 30,000 homes. Commit to a vision for Oakland.',
     icon: (
       <svg viewBox="0 0 40 40" className="w-10 h-10" fill="none">
         <circle cx="20" cy="20" r="18" stroke="#2d6363" strokeWidth="2" />
@@ -399,7 +399,7 @@ function SlideHow() {
             <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-600 mb-3">How to help</p>
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Three steps. Ten minutes.</h2>
             <p className="text-gray-500 leading-relaxed">
-              No expertise required. Just your opinion about your neighborhood — and where you'd be okay seeing a tiny home instead of an empty parking space.
+              No expertise required. Just your opinion about your neighborhood, and where you'd be okay seeing a tiny home instead of an empty parking space.
             </p>
           </motion.div>
         </div>

@@ -32,7 +32,7 @@ const goals = [
     tag: 'TRANSFORMATIVE',
     pct: 65,
     headline: '30,000 units',
-    desc: "Enough supply to push Oakland's vacancy rate to 6–7% — the level at which rents actually start falling.",
+    desc: "Enough supply to push Oakland's vacancy rate to 6-7%, the level at which rents actually start falling.",
     barColor: 'bg-orange-300',
     border: 'border-orange-400',
     ring: 'ring-orange-400',

@@ -40,7 +40,7 @@ export default function PolygonMapPage() {
       <section className="bg-primary-900 text-white">
         <div className="max-w-6xl mx-auto px-6 py-12">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary-200 mb-3">
-            Oakland, CA — Street Parking Capacity
+            Oakland, CA: Street Parking Capacity
           </p>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight">
             Parking Spot Map

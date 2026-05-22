@@ -153,7 +153,7 @@ export default function AHPPage() {
                 Consistency Ratio: <span className="font-medium text-gray-700">{consistencyRatio.toFixed(4)}</span>
                 {consistencyRatio > 0.1 && (
                   <span className="ml-2 text-amber-600 font-medium">
-                    (Above 0.1 threshold — your comparisons may be inconsistent)
+                    (Above 0.1 threshold: your comparisons may be inconsistent)
                   </span>
                 )}
               </p>

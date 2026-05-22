@@ -181,7 +181,7 @@ export default function SuggestPage() {
           <div className="absolute top-3 right-3 z-[1000]
             bg-accent-100 border border-accent-500 rounded-lg px-3 py-2 shadow-sm
             text-xs text-accent-700 max-w-xs">
-            Could not load existing suggestions — you can still add your own.
+            Could not load existing suggestions. You can still add your own.
           </div>
         )}
 
@@ -189,7 +189,7 @@ export default function SuggestPage() {
         {submitted && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000]
             bg-primary-700 text-white rounded-full px-5 py-2 text-sm font-medium shadow-md pointer-events-none">
-            Your suggestion has been saved — thank you!
+            Your suggestion has been saved. Thank you!
           </div>
         )}
 

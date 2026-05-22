@@ -16,7 +16,7 @@ export default function AboutPage() {
           <p className="text-gray-600 leading-relaxed">
             Oakland faces a significant housing crisis, with thousands of residents experiencing
             homelessness. Tiny home villages have emerged as a practical, dignified interim housing
-            solution — but identifying the right sites requires balancing many competing factors:
+            solution, but identifying the right sites requires balancing many competing factors:
             proximity to transit, access to services, infrastructure capacity, and alignment with
             urban planning goals.
           </p>
