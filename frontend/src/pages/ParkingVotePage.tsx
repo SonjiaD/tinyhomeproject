@@ -218,6 +218,7 @@ export default function ParkingVotePage() {
 
   const [batchComment, setBatchComment] = useState('')
   const [batchSubmitting, setBatchSubmitting] = useState(false)
+  const [batchError, setBatchError] = useState<string | null>(null)
 
   // Load this user's prior votes from localStorage
   useEffect(() => {
@@ -299,6 +300,7 @@ export default function ParkingVotePage() {
 
   async function submitBatch(support: boolean) {
     setBatchSubmitting(true)
+    setBatchError(null)
     const ids = Array.from(selectedIds)
     try {
       await axios.post(`${API}/api/votes/batch`, { site_ids: ids, support, comment: batchComment || null, user_id: user?.id })
@@ -321,8 +323,11 @@ export default function ParkingVotePage() {
         return next
       })
       for (const id of ids) persistVote(id, support)
+      setSelectedIds(new Set()); setBatchComment('')
+    } catch {
+      setBatchError('Failed to save votes. Please try again.')
     } finally {
-      setBatchSubmitting(false); setSelectedIds(new Set()); setBatchComment('')
+      setBatchSubmitting(false)
     }
   }
 
@@ -465,7 +470,12 @@ export default function ParkingVotePage() {
 
       {/* Batch vote bar */}
       {selectedIds.size > 0 && (
-        <div className="bg-primary-900 border-t border-primary-800 px-6 py-3 flex items-center gap-4 shrink-0">
+        <div className="bg-primary-900 border-t border-primary-800 px-6 py-3 flex items-center gap-4 shrink-0 flex-wrap">
+          {batchError && (
+            <div className="w-full text-sm text-red-300 bg-red-900/50 border border-red-700 rounded px-3 py-1.5">
+              {batchError}
+            </div>
+          )}
           <span className="text-white font-medium text-sm">
             {selectedIds.size.toLocaleString()} spaces selected
           </span>
@@ -497,7 +507,7 @@ export default function ParkingVotePage() {
           >
             Clear Votes
           </button>
-          <button onClick={() => setSelectedIds(new Set())} className="text-primary-400 hover:text-white text-sm transition-colors ml-1">
+          <button onClick={() => { setSelectedIds(new Set()); setBatchError(null) }} className="text-primary-400 hover:text-white text-sm transition-colors ml-1">
             Cancel
           </button>
         </div>
