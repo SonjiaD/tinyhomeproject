@@ -31,17 +31,27 @@ except ImportError:
 # ── Constants ──────────────────────────────────────────────────────────────────
 SPOT_LENGTH  = 9.144   # 30 ft in metres (length along the kerb)
 SPOT_WIDTH   = 3.048   # 10 ft in metres (width into the road)
-END_SETBACK  = 6.096   # 20 ft — California daylighting law (CVC §22500 / AB 413)
-               #          No parking within 20 ft of any crosswalk / intersection
+END_SETBACK  = 10.668  # 35 ft from OSM edge endpoint (= intersection centerline).
+               #          OSM nodes sit at the intersection center, not the kerb.
+               #          20 ft (6.096 m) California daylighting clearance from the
+               #          near kerb of the cross-street, plus ~4.5 m cross-street
+               #          half-width = ~10.6 m total from centerline-to-centerline.
 SNAP_RADIUS  = 20.0    # Max distance (m) to snap a candidate point to a street edge
 UTM_CRS      = 26910   # EPSG for UTM Zone 10N — metric operations
 WGS84_CRS    = 4326
 
+# Road types that never have on-street parking (freeways, ramps, etc.)
+NO_PARKING_TYPES = {
+    "motorway", "motorway_link", "trunk", "trunk_link",
+    "busway", "raceway", "escape",
+}
+
 # Half road width (m) by OSM highway type — used to place spot centers at the kerb.
 # OSM edges are road centerlines; kerbs are ~half-width away.
 HALF_WIDTHS: dict[str, float] = {
-    "motorway": 9.0, "trunk": 7.5, "primary": 6.5,
-    "secondary": 5.5, "tertiary": 5.0,
+    "primary": 6.5, "primary_link": 5.5,
+    "secondary": 5.5, "secondary_link": 5.0,
+    "tertiary": 5.0, "tertiary_link": 4.5,
     "residential": 4.5, "unclassified": 4.5,
     "living_street": 4.0, "service": 3.5,
 }
@@ -154,22 +164,22 @@ def main():
             skipped_short += 1
             continue
 
-        bearing = edge_bearing(geom)
-        rad = math.radians(bearing)
-        sin_b, cos_b = math.sin(rad), math.cos(rad)
-
         highway_val = edge_row.get("highway", "residential")
         if isinstance(highway_val, list):
             highway_val = highway_val[0]
-        hw_key = str(highway_val).replace("_link", "")
-        lateral = HALF_WIDTHS.get(hw_key, 4.5)  # metres from centerline to kerb
+        highway_val = str(highway_val)
+        if highway_val in NO_PARKING_TYPES:
+            continue  # freeways, ramps — no street parking
+
+        lateral = HALF_WIDTHS.get(highway_val, 4.5)  # metres from centerline to kerb
 
         # Metadata from the nearest candidates on this edge
         cands_here = assigned[assigned["index_right"] == edge_idx]
         if cands_here.empty:
             continue
 
-        # Classify each candidate as left or right of the directed edge
+        # Classify each candidate as left or right of the directed edge using
+        # the overall edge direction (first→last point).
         is_left     = classify_side(geom, cands_here)
         left_cands  = cands_here[is_left]
         right_cands = cands_here[~is_left]
@@ -182,15 +192,24 @@ def main():
         for side_sign, side_label, side_cands in sides:
             ref = side_cands.iloc[0]
 
-            # Perpendicular to bearing: right=(sin_b, −cos_b), left=(−sin_b, cos_b)
-            perp_x = side_sign * sin_b
-            perp_y = -side_sign * cos_b
-
             for i, dist in enumerate(centres):
                 pt = geom.interpolate(dist)
-                cx = pt.x + lateral * perp_x
-                cy = pt.y + lateral * perp_y
-                rect_utm = make_rectangle(cx, cy, SPOT_LENGTH, SPOT_WIDTH, bearing)
+
+                # Local tangent at this position — handles curved roads correctly.
+                # Sample 0.5 m ahead and behind; clamp to segment bounds.
+                pt_a = geom.interpolate(min(dist + 0.5, seg_len))
+                pt_b = geom.interpolate(max(dist - 0.5, 0.0))
+                local_bearing = math.degrees(math.atan2(
+                    pt_a.y - pt_b.y, pt_a.x - pt_b.x
+                ))
+                local_rad = math.radians(local_bearing)
+                local_sin = math.sin(local_rad)
+                local_cos = math.cos(local_rad)
+
+                # Perpendicular offset: right=(sin,−cos), left=(−sin,cos)
+                cx = pt.x + lateral * side_sign * local_sin
+                cy = pt.y + lateral * (-side_sign) * local_cos
+                rect_utm = make_rectangle(cx, cy, SPOT_LENGTH, SPOT_WIDTH, local_bearing)
 
                 # Reproject to WGS84
                 rect_wgs = (
@@ -217,7 +236,7 @@ def main():
                         "address":      str(ref.get("address", "")),
                         "spot_index":   i,
                         "side":         side_label,
-                        "bearing_deg":  round(bearing, 2),
+                        "bearing_deg":  round(local_bearing, 2),
                         "transit_dist": float(ref.get("transit_dist") or 0),
                         "water_infrastructure_dist": float(ref.get("water_infrastructure_dist") or 0),
                         "city_facility_dist":        float(ref.get("city_facility_dist") or 0),
