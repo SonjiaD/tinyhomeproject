@@ -80,21 +80,39 @@ function ParkingLayer({
     }
   }, [voteCounts, userVotes, selectedId, selectedIds])
 
-  // Create the layer exactly once
+  // Create the layer exactly once, populate in chunks to keep UI responsive
   useEffect(() => {
     if (!geojson) return
-    const layer = L.geoJSON(geojson, {
-      style: computeStyle,
-      onEachFeature: (feature, fl) => {
-        fl.on('click', (e: L.LeafletMouseEvent) => {
-          if (drawModeRef.current !== 'none') return
-          L.DomEvent.stopPropagation(e)
-          onSelectRef.current(feature.properties.id)
-        })
-      },
+    let cancelled = false
+
+    const layer = L.geoJSON(undefined, { style: computeStyle })
+
+    // One click handler on the parent layer instead of one per feature
+    layer.on('click', (e: L.LeafletMouseEvent) => {
+      if (drawModeRef.current !== 'none') return
+      L.DomEvent.stopPropagation(e)
+      const id = (e as any).sourceTarget?.feature?.properties?.id
+      if (id) onSelectRef.current(id)
     })
+
     layerRef.current = layer
-    return () => { map.removeLayer(layer); layerRef.current = null }
+
+    const features = geojson.features
+    const CHUNK = 3000
+    let i = 0
+    function addChunk() {
+      if (cancelled || !layerRef.current) return
+      layer.addData({ type: 'FeatureCollection', features: features.slice(i, i + CHUNK) } as any)
+      i += CHUNK
+      if (i < features.length) setTimeout(addChunk, 0)
+    }
+    addChunk()
+
+    return () => {
+      cancelled = true
+      map.removeLayer(layer)
+      layerRef.current = null
+    }
   }, [geojson, map]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show / hide based on zoom without recreating

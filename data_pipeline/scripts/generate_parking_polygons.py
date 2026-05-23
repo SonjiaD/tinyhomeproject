@@ -36,6 +36,13 @@ except ImportError:
     print("ERROR: osmnx is not installed. Run: pip install osmnx")
     sys.exit(1)
 
+def _safe_float(val, default=0.0):
+    try:
+        v = float(val)
+        return default if math.isnan(v) else v
+    except (TypeError, ValueError):
+        return default
+
 # ── Constants ──────────────────────────────────────────────────────────────────
 SPOT_LENGTH  = 9.144   # 30 ft in metres (length along the kerb)
 SPOT_WIDTH   = 3.048   # 10 ft in metres (width into the road)
@@ -246,10 +253,10 @@ def main():
                         "spot_index":   i,
                         "side":         side_label,
                         "bearing_deg":  round(local_bearing, 2),
-                        "transit_dist": float(ref.get("transit_dist") or 0),
-                        "water_infrastructure_dist": float(ref.get("water_infrastructure_dist") or 0),
-                        "city_facility_dist":        float(ref.get("city_facility_dist") or 0),
-                        "homeless_service_dist":     float(ref.get("homeless_service_dist") or 0),
+                        "transit_dist": _safe_float(ref.get("transit_dist")),
+                        "water_infrastructure_dist": _safe_float(ref.get("water_infrastructure_dist")),
+                        "city_facility_dist":        _safe_float(ref.get("city_facility_dist")),
+                        "homeless_service_dist":     _safe_float(ref.get("homeless_service_dist")),
                     },
                 })
                 total += 1

@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
+from flask_compress import Compress
 import numpy as np
 import geopandas as gpd
 import pandas as pd
@@ -12,6 +13,7 @@ from supabase import create_client
 _ROOT = Path(__file__).resolve().parent.parent
 
 app = Flask(__name__)
+Compress(app)
 CORS(app, origins=[
     "https://tinyhomeproject.netlify.app",
     "http://localhost:5173",
@@ -64,7 +66,7 @@ _POLYGON_FILE = _ROOT / "data" / "polygons" / "parking_polygons_latest.geojson"
 _poly_total = 0
 try:
     with open(_POLYGON_FILE, encoding="utf-8") as _f:
-        POLY_RAW = _f.read()
+        POLY_RAW = _f.read().replace(':NaN', ':null').replace(': NaN', ': null')
     _m = re.search(r'"total_spots":(\d+)', POLY_RAW)
     _poly_total = int(_m.group(1)) if _m else 0
     print(f"Loaded parking polygons ({_poly_total:,} spots).")
