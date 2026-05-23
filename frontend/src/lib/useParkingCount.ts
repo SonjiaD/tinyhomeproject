@@ -7,11 +7,12 @@ export function useParkingCount(): number | null {
 
   useEffect(() => {
     if (cached !== null) { setCount(cached); return }
-    fetch('/parking_polygons.geojson', { headers: { Range: 'bytes=0-300' } })
-      .then(r => r.text())
-      .then(text => {
-        const m = text.match(/"total_spots":(\d+)/)
-        if (m) { cached = parseInt(m[1], 10); setCount(cached) }
+    const apiUrl = import.meta.env.VITE_API_URL || ''
+    fetch(`${apiUrl}/api/polygon_count`)
+      .then(r => r.json())
+      .then(data => {
+        cached = data.total_spots ?? null
+        if (cached !== null) setCount(cached)
       })
       .catch(() => {})
   }, [])

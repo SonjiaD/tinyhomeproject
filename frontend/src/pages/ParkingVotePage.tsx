@@ -246,7 +246,7 @@ export default function ParkingVotePage() {
   useEffect(() => {
     async function load() {
       const [geoRes, voteRes] = await Promise.all([
-        fetch('/parking_polygons.geojson'),
+        fetch(`${API}/api/polygon_map`),
         axios.get(`${API}/api/votes`).catch(() => ({ data: {} })),
       ])
       const geojson = await geoRes.json()

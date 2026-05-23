@@ -9,8 +9,10 @@ export default function PolygonMapPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
+  const apiUrl = import.meta.env.VITE_API_URL || ''
+
   useEffect(() => {
-    fetch('/parking_polygons.geojson')
+    fetch(`${apiUrl}/api/polygon_map`)
       .then(res => {
         if (!res.ok) throw new Error('fetch failed')
         return res.json()
@@ -70,7 +72,7 @@ export default function PolygonMapPage() {
           {error && (
             <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-700 font-medium">
-                Could not load parking_polygons.geojson from the public folder.
+                Could not load parking polygon data from the API.
               </p>
             </div>
           )}
