@@ -229,8 +229,8 @@ def submit_votes_batch():
     user_id = data.get("user_id") or None
     if not site_ids or support is None:
         return jsonify({"error": "site_ids and support are required"}), 400
-    if len(site_ids) > 5000:
-        return jsonify({"error": "Too many site_ids (max 5000)"}), 400
+    if len(site_ids) > 500:
+        return jsonify({"error": "Too many site_ids (max 500)"}), 400
     try:
         rows = [{"site_id": str(sid), "support": bool(support), "comment": comment or None,
                  **({"user_id": str(user_id)} if user_id else {})} for sid in site_ids]
@@ -252,8 +252,8 @@ def delete_votes_batch():
     user_id = str(data.get("user_id", "")).strip()
     if not site_ids or not user_id:
         return jsonify({"error": "site_ids and user_id are required"}), 400
-    if len(site_ids) > 5000:
-        return jsonify({"error": "Too many site_ids (max 5000)"}), 400
+    if len(site_ids) > 500:
+        return jsonify({"error": "Too many site_ids (max 500)"}), 400
     try:
         supabase.table("votes").delete().in_("site_id", [str(s) for s in site_ids]).eq("user_id", user_id).execute()
         return jsonify({"status": "ok", "count": len(site_ids)}), 200

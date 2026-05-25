@@ -8,6 +8,7 @@ import { useParkingCount } from '../lib/useParkingCount'
 import { computeAllBounds, type DistanceBounds } from '../lib/normalization'
 import { getVoteColor } from '../lib/voteColors'
 import { SitePanel } from '../components/SitePanel'
+import { ProgressToast } from '../components/ui'
 import { useAuth } from '../contexts/AuthContext'
 
 const API = import.meta.env.VITE_API_URL || ''
@@ -287,6 +288,8 @@ export default function ParkingVotePage() {
   const [batchComment, setBatchComment] = useState('')
   const [batchSubmitting, setBatchSubmitting] = useState(false)
   const [batchError, setBatchError] = useState<string | null>(null)
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null)
+  const [batchLabel, setBatchLabel] = useState('Saving your votes…')
 
   // ── Progress / milestones / celebrations ─────────────────────────────────
   const userGoal: number = (user?.user_metadata?.goal as number) ?? 6000
@@ -359,18 +362,19 @@ export default function ParkingVotePage() {
     })
   }
 
+  const fetchCommunityTotal = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API}/api/votes/summary`)
+      setCommunityTotal(res.data.total_yes ?? null)
+    } catch { /* non-critical */ }
+  }, [])
+
   // Poll community total every 30s
   useEffect(() => {
-    async function fetchTotal() {
-      try {
-        const res = await axios.get(`${API}/api/votes/summary`)
-        setCommunityTotal(res.data.total_yes ?? null)
-      } catch { /* non-critical */ }
-    }
-    fetchTotal()
-    const interval = setInterval(fetchTotal, 30000)
+    fetchCommunityTotal()
+    const interval = setInterval(fetchCommunityTotal, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchCommunityTotal])
 
   // Load this user's prior votes from localStorage
   useEffect(() => {
@@ -457,11 +461,30 @@ export default function ParkingVotePage() {
   }
 
   async function submitBatch(support: boolean) {
+    if (!user?.id) return
+    setBatchLabel('Saving your votes…')
     setBatchSubmitting(true)
     setBatchError(null)
     const ids = Array.from(selectedIds)
+    // Optimistic community total update
+    setCommunityTotal(prev => {
+      if (prev === null) return prev
+      if (support) {
+        // Count spots not already yes-voted
+        return prev + ids.filter(id => userVotes[id] !== true).length
+      } else {
+        // Count spots that were yes-voted (now being flipped to no)
+        return prev - ids.filter(id => userVotes[id] === true).length
+      }
+    })
+    const CHUNK = 500
+    setBatchProgress({ done: 0, total: ids.length })
     try {
-      await axios.post(`${API}/api/votes/batch`, { site_ids: ids, support, comment: batchComment || null, user_id: user?.id })
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const chunk = ids.slice(i, i + CHUNK)
+        await axios.post(`${API}/api/votes/batch`, { site_ids: chunk, support, comment: batchComment || null, user_id: user.id }, { timeout: 15000 })
+        setBatchProgress({ done: Math.min(i + CHUNK, ids.length), total: ids.length })
+      }
       setVoteCounts(prev => {
         const next = { ...prev }
         for (const id of ids) {
@@ -480,9 +503,7 @@ export default function ParkingVotePage() {
         for (const id of ids) next[id] = support
         return next
       })
-      // For batches, compute milestone check once across the whole batch
       const prevYes = Object.values(userVotes).filter(Boolean).length
-      if (!user?.id) return
       const stored = localStorage.getItem('parkingVotes_v1')
       const all = stored ? JSON.parse(stored) as Record<string, Record<string, boolean>> : {}
       const userMap = { ...(all[user.id] ?? {}) }
@@ -494,18 +515,23 @@ export default function ParkingVotePage() {
         checkMilestones(newYes, prevYes)
       }
       setSelectedIds(new Set()); setBatchComment('')
+      fetchCommunityTotal()
     } catch {
       setBatchError('Failed to save votes. Please try again.')
     } finally {
       setBatchSubmitting(false)
+      setBatchProgress(null)
     }
   }
 
   async function submitBatchUndo() {
     const ids = Array.from(selectedIds)
     if (!ids.length || !user?.id) return
+    setBatchLabel('Clearing votes…')
     setBatchSubmitting(true)
-    // Capture current votes before clearing
+    setBatchError(null)
+    // Optimistic: subtract yes votes being cleared
+    setCommunityTotal(prev => prev !== null ? prev - ids.filter(id => userVotes[id] === true).length : prev)
     const prevVotes = { ...userVotes }
     setUserVotes(prev => { const n = { ...prev }; ids.forEach(id => delete n[id]); return n })
     ids.forEach(id => unpersistVote(id))
@@ -520,12 +546,23 @@ export default function ParkingVotePage() {
       })
       return n
     })
+    const CHUNK = 500
+    setBatchProgress({ done: 0, total: ids.length })
     try {
-      await axios.delete(`${API}/api/votes/batch`, { data: { site_ids: ids, user_id: user.id } })
-    } catch { /* local state already updated */ }
-    setBatchSubmitting(false)
-    setSelectedIds(new Set())
-    setBatchComment('')
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const chunk = ids.slice(i, i + CHUNK)
+        await axios.delete(`${API}/api/votes/batch`, { data: { site_ids: chunk, user_id: user.id }, timeout: 15000 })
+        setBatchProgress({ done: Math.min(i + CHUNK, ids.length), total: ids.length })
+      }
+      fetchCommunityTotal()
+    } catch {
+      setBatchError('Failed to clear votes. Please try again.')
+    } finally {
+      setBatchSubmitting(false)
+      setBatchProgress(null)
+      setSelectedIds(new Set())
+      setBatchComment('')
+    }
   }
 
   const selectedSite = selectedId && rawGeojson
@@ -564,7 +601,7 @@ export default function ParkingVotePage() {
           {communityTotal !== null && (
             <>
               <span className="text-teal-400 text-xs font-semibold uppercase tracking-widest shrink-0">Community</span>
-              <span className="text-white text-xs font-bold shrink-0">{communityTotal.toLocaleString()} pledged</span>
+              <span className="text-white text-xs font-bold shrink-0">{communityTotal.toLocaleString()} spots supported</span>
             </>
           )}
 
@@ -602,13 +639,21 @@ export default function ParkingVotePage() {
               <div className="flex-1 pt-3 pl-5">
                 <p className="text-xs text-teal-400 font-semibold uppercase tracking-widest mb-1">Community</p>
                 <p className="text-white font-bold text-xl leading-none">{communityTotal.toLocaleString()}</p>
-                <p className="text-teal-300/70 text-xs mt-0.5">units pledged across Oakland</p>
-                <p className="text-teal-300/50 text-xs mt-2">{formatTax(communityTotal)} projected annual tax</p>
+                <p className="text-teal-300/70 text-xs mt-0.5">spots supported across Oakland</p>
+                <p className="text-teal-300/50 text-xs mt-1">yes votes only · {formatTax(communityTotal)} projected annual tax</p>
               </div>
             )}
           </div>
         )}
       </div>
+
+      {/* ── Batch save progress ─────────────────────────────────────────── */}
+      <ProgressToast
+        visible={batchSubmitting}
+        label={batchLabel}
+        done={batchProgress?.done}
+        total={batchProgress?.total}
+      />
 
       {/* ── Toast notification ──────────────────────────────────────────── */}
       {toast && (
@@ -750,14 +795,27 @@ export default function ParkingVotePage() {
             userId={user?.id}
             onClose={() => setSelectedId(null)}
             onVoteSubmitted={(id: string, tally: VoteTally, support: boolean) => {
+              const prevVote = userVotes[id]
               setUserVotes(prev => ({ ...prev, [id]: support }))
               persistVote(id, support)
               setVoteCounts(prev => ({ ...prev, [id]: tally }))
+              // Optimistic: +1 if new yes or flipped from no→yes; -1 if flipped from yes→no
+              setCommunityTotal(prev => {
+                if (prev === null) return prev
+                if (support && prevVote !== true) return prev + 1
+                if (!support && prevVote === true) return prev - 1
+                return prev
+              })
+              fetchCommunityTotal()
             }}
             onVoteUndone={(id: string, tally: VoteTally) => {
+              const prevVote = userVotes[id]
               setUserVotes(prev => { const n = { ...prev }; delete n[id]; return n })
               unpersistVote(id)
               setVoteCounts(prev => ({ ...prev, [id]: tally }))
+              // Optimistic: -1 only if we're removing a yes vote
+              if (prevVote === true) setCommunityTotal(prev => prev !== null ? prev - 1 : prev)
+              fetchCommunityTotal()
             }}
           />
         )}
