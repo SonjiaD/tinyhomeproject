@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { MapContainer, TileLayer, useMap, useMapEvents, Circle, Rectangle } from 'react-leaflet'
+import { MapContainer, TileLayer, useMap, useMapEvents, Circle, Rectangle, Polyline, Polygon, CircleMarker } from 'react-leaflet'
 import L, { LatLngBounds, LatLng } from 'leaflet'
 import axios from 'axios'
 import confetti from 'canvas-confetti'
@@ -14,7 +14,7 @@ import { useAuth } from '../contexts/AuthContext'
 const API = import.meta.env.VITE_API_URL || ''
 const MIN_ZOOM = 14
 
-type DrawMode = 'none' | 'rectangle' | 'circle' | 'paint'
+type DrawMode = 'none' | 'rectangle' | 'circle' | 'paint' | 'polygon'
 
 // ── Milestone config ──────────────────────────────────────────────────────────
 const MILESTONES = [
@@ -76,6 +76,18 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number): numb
     Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+// ── Point-in-polygon (ray casting) ───────────────────────────────────────────
+function pointInPolygon(lat: number, lon: number, verts: LatLng[]): boolean {
+  let inside = false
+  for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
+    const xi = verts[i].lng, yi = verts[i].lat
+    const xj = verts[j].lng, yj = verts[j].lat
+    if (((yi > lat) !== (yj > lat)) && (lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi))
+      inside = !inside
+  }
+  return inside
 }
 
 // ── Canvas-rendered GeoJSON layer — created ONCE, styled imperatively ─────────
@@ -142,6 +154,9 @@ function ParkingLayer({
     })
 
     layerRef.current = layer
+    // Visible effect only fires when `visible` changes; if visible is already true
+    // when the layer is created (e.g. initial zoom >= MIN_ZOOM), add it directly.
+    if (visible) layer.addTo(map)
 
     const features = geojson.features
     const CHUNK = 3000
@@ -360,6 +375,151 @@ function PaintBrushTool({ active, brushRadius, candidates, onAddSpots, onComplet
   )
 }
 
+// ── Polygon draw tool ─────────────────────────────────────────────────────────
+function PolygonDrawTool({ active, onComplete }: { active: boolean; onComplete: (verts: LatLng[]) => void }) {
+  const map = useMap()
+  const [vertices, setVertices] = useState<LatLng[]>([])
+  const [cursorPos, setCursorPos] = useState<LatLng | null>(null)
+  const [nearFirst, setNearFirst] = useState(false)
+  const verticesRef = useRef<LatLng[]>([])
+  const lastClickTimeRef = useRef(0)
+
+  useEffect(() => {
+    if (!active) {
+      verticesRef.current = []
+      setVertices([]); setCursorPos(null); setNearFirst(false)
+      return
+    }
+    map.getContainer().style.cursor = 'crosshair'
+    map.dragging.disable()
+
+    const pt = (e: MouseEvent) => map.mouseEventToLatLng(e as any)
+
+    const click = (e: MouseEvent) => {
+      const now = Date.now()
+      const timeSinceLast = now - lastClickTimeRef.current
+      lastClickTimeRef.current = now
+      const pos = pt(e)
+      const verts = verticesRef.current
+
+      if (timeSinceLast < 300) {
+        // Double-click: close if enough vertices placed
+        if (verts.length >= 3) {
+          const closeVerts = [...verts]
+          verticesRef.current = []
+          setVertices([]); setCursorPos(null); setNearFirst(false)
+          onComplete(closeVerts)
+        }
+        return
+      }
+
+      // Snap-to-first: click near first vertex to close
+      if (verts.length >= 3) {
+        const firstPx = map.latLngToContainerPoint(verts[0])
+        const posPx = map.latLngToContainerPoint(pos)
+        if (Math.hypot(firstPx.x - posPx.x, firstPx.y - posPx.y) < 12) {
+          const closeVerts = [...verts]
+          verticesRef.current = []
+          setVertices([]); setCursorPos(null); setNearFirst(false)
+          onComplete(closeVerts)
+          return
+        }
+      }
+
+      const newVerts = [...verts, pos]
+      verticesRef.current = newVerts
+      setVertices(newVerts)
+    }
+
+    const move = (e: MouseEvent) => {
+      const pos = pt(e)
+      setCursorPos(pos)
+      const verts = verticesRef.current
+      if (verts.length >= 3) {
+        const firstPx = map.latLngToContainerPoint(verts[0])
+        const posPx = map.latLngToContainerPoint(pos)
+        setNearFirst(Math.hypot(firstPx.x - posPx.x, firstPx.y - posPx.y) < 12)
+      } else {
+        setNearFirst(false)
+      }
+    }
+
+    const contextmenu = (e: MouseEvent) => {
+      e.preventDefault()
+      const newVerts = verticesRef.current.slice(0, -1)
+      verticesRef.current = newVerts
+      setVertices(newVerts)
+    }
+
+    const keydown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        verticesRef.current = []
+        setVertices([]); setCursorPos(null); setNearFirst(false)
+        onComplete([])  // empty signals cancel to parent
+      }
+    }
+
+    const c = map.getContainer()
+    c.addEventListener('click', click)
+    c.addEventListener('mousemove', move)
+    c.addEventListener('contextmenu', contextmenu)
+    document.addEventListener('keydown', keydown, { capture: true })
+    return () => {
+      c.removeEventListener('click', click)
+      c.removeEventListener('mousemove', move)
+      c.removeEventListener('contextmenu', contextmenu)
+      document.removeEventListener('keydown', keydown, { capture: true })
+      map.getContainer().style.cursor = ''
+      map.dragging.enable()
+    }
+  }, [active, map, onComplete])
+
+  if (!active || vertices.length === 0) return null
+
+  return (
+    <>
+      {/* Committed polygon fill — shows enclosed area as you build */}
+      {vertices.length >= 3 && (
+        <Polygon
+          positions={vertices}
+          pathOptions={{ color: '#f97316', weight: 0, fillColor: '#f97316', fillOpacity: 0.12 }}
+        />
+      )}
+      {/* Dashed outline through placed vertices */}
+      {vertices.length >= 2 && (
+        <Polyline
+          positions={vertices}
+          pathOptions={{ color: '#f97316', weight: 2, dashArray: '6 4' }}
+        />
+      )}
+      {/* Rubber-band line: last vertex → cursor */}
+      {cursorPos && (
+        <Polyline
+          positions={[vertices[vertices.length - 1], cursorPos]}
+          pathOptions={{ color: '#f97316', weight: 2, dashArray: '4 4', opacity: 0.7 }}
+        />
+      )}
+      {/* Vertex dots */}
+      {vertices.map((v, i) => (
+        <CircleMarker
+          key={i}
+          center={v}
+          radius={i === 0 && nearFirst && vertices.length >= 3 ? 7 : 5}
+          pathOptions={{ color: '#ea580c', fillColor: '#f97316', fillOpacity: 1, weight: 1.5 }}
+        />
+      ))}
+      {/* Snap ring pulses on first vertex when cursor is close */}
+      {nearFirst && vertices.length >= 3 && (
+        <CircleMarker
+          center={vertices[0]}
+          radius={14}
+          pathOptions={{ color: '#f97316', fillOpacity: 0, weight: 1.5, opacity: 0.55, dashArray: '3 3' }}
+        />
+      )}
+    </>
+  )
+}
+
 // Projects annual Oakland tax revenue per pledged unit of tiny home housing.
 // Assumes $1,000/mo rent (affordable housing target).
 //   BLT (Business License Tax): gross rent × Oakland BLT rate of 1.395%
@@ -382,7 +542,7 @@ export default function ParkingVotePage() {
   const [allBounds, setAllBounds] = useState<Record<string, DistanceBounds>>({})
   const [userVotes, setUserVotes] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
-  const [zoom, setZoom] = useState(13)
+  const [zoom, setZoom] = useState(14)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -562,10 +722,10 @@ export default function ParkingVotePage() {
     setSelectedIds(ids); setSelectedId(null); setDrawModeSync('none')
   }, [rawGeojson])
 
-  const paintCandidates = useMemo(() =>
+  const paintCandidates = useMemo<{ id: string; lat: number; lon: number }[]>(() =>
     rawGeojson?.features.map((f: any) => {
       const [lon, lat] = f.geometry.coordinates[0][0]
-      return { id: f.properties.id as string, lat, lon }
+      return { id: f.properties.id as string, lat: lat as number, lon: lon as number }
     }) ?? []
   , [rawGeojson])
 
@@ -584,6 +744,18 @@ export default function ParkingVotePage() {
       return next
     })
   }, [])
+
+  const handlePolygonComplete = useCallback((verts: LatLng[]) => {
+    setSelectedId(null)
+    setDrawModeSync('none')
+    if (verts.length < 3) return  // cancelled via Escape
+    const ids = new Set<string>(
+      paintCandidates
+        .filter(c => pointInPolygon(c.lat, c.lon, verts))
+        .map(c => c.id)
+    )
+    setSelectedIds(ids)
+  }, [paintCandidates]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectId = useCallback((id: string) => {
     if (drawModeRef.current !== 'none') return
@@ -856,70 +1028,94 @@ export default function ParkingVotePage() {
       )}
 
       {/* Toolbar */}
-      <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-3 shrink-0">
-        <span className="text-sm font-semibold text-gray-700">Selection tools:</span>
-        {(['rectangle', 'circle', 'paint'] as DrawMode[]).map(mode => (
-          <button
-            key={mode}
-            onClick={() => setDrawModeSync(drawMode === mode ? 'none' : mode as DrawMode)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize border ${
-              drawMode === mode
-                ? 'bg-orange-100 text-orange-700 border-orange-300'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-transparent'
-            }`}
-          >
-            {mode === 'rectangle'
-              ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="4" width="12" height="8" rx="1" /></svg>
-              : mode === 'circle'
-              ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="5" /></svg>
-              : <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 1.5l2 2-8.5 8.5-3 .5.5-3 9-8z" strokeLinejoin="round" strokeLinecap="round" /><path d="M2.5 13.5a1 1 0 101.5-1.3" strokeLinecap="round" /></svg>
-            }
-            {mode}
-          </button>
-        ))}
-        {drawMode === 'paint' && (
-          <label className="flex items-center gap-2 text-xs text-gray-600 ml-1">
-            <span className="shrink-0">Brush: {brushRadius}m</span>
-            <input
-              type="range"
-              min={10}
-              max={100}
-              value={brushRadius}
-              onChange={e => setBrushRadius(Number(e.target.value))}
-              className="w-20 accent-orange-500"
-            />
-          </label>
-        )}
-        {selectedIds.size > 0 && (
-          <button onClick={() => setSelectedIds(new Set())} className="ml-1 text-xs text-gray-400 hover:text-gray-600">
-            Clear selection
-          </button>
-        )}
-        <span className={`ml-2 text-xs font-medium ${drawMode !== 'none' ? 'text-orange-600 animate-pulse' : 'invisible'}`}>
-          {drawMode === 'circle' ? 'Drag to draw a circle' : drawMode === 'paint' ? 'Hold and drag to paint spots' : 'Drag to select an area'}
-        </span>
-        <div className="flex items-center gap-3 text-xs text-gray-500">
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#3d8888' }} /> Not voted
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#16a34a' }} /> You supported
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#dc2626' }} /> You opposed
-          </span>
-        </div>
-        <div className="ml-auto flex items-center gap-2 text-xs text-gray-400">
-          <span>{(rawGeojson?.total_spots ?? parkingCount)?.toLocaleString() ?? '—'} total spaces</span>
-          {zoom < MIN_ZOOM && <span className="text-orange-500 font-medium">· Zoom in to see spaces</span>}
-        </div>
-      </div>
+      {(() => {
+        const DESCRIPTIONS: Record<string, string> = {
+          rectangle: 'Click and drag to draw a box. All spots inside get selected.',
+          circle: 'Click to set the center, drag outward to set the radius. All spots inside get selected.',
+          polygon: 'Click to place points. Double-click or click the first point to finish. Right-click to undo a point. Esc to cancel.',
+          paint: 'Hold and drag to highlight spots. Every spot you pass over gets selected. Use the slider to adjust brush size.',
+        }
+        return (
+          <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-2 shrink-0">
+
+            {/* LEFT: selection tools */}
+            <span className="text-sm font-semibold text-gray-700 shrink-0 mr-1">Select:</span>
+            {(['rectangle', 'circle', 'polygon', 'paint'] as DrawMode[]).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setDrawModeSync(drawMode === mode ? 'none' : mode as DrawMode)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize border shrink-0 ${
+                  drawMode === mode
+                    ? 'bg-orange-100 text-orange-700 border-orange-300'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-transparent'
+                }`}
+              >
+                {mode === 'rectangle'
+                  ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="4" width="12" height="8" rx="1" /></svg>
+                  : mode === 'circle'
+                  ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="5" /></svg>
+                  : mode === 'polygon'
+                  ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="8,1.5 14.5,5.5 12,13.5 4,13.5 1.5,5.5" strokeLinejoin="round" /></svg>
+                  : <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 1.5l2 2-8.5 8.5-3 .5.5-3 9-8z" strokeLinejoin="round" strokeLinecap="round" /><path d="M2.5 13.5a1 1 0 101.5-1.3" strokeLinecap="round" /></svg>
+                }
+                {mode}
+              </button>
+            ))}
+
+            {drawMode === 'paint' && (
+              <label className="flex items-center gap-2 text-xs text-gray-600 ml-1 shrink-0">
+                <span className="shrink-0">Brush: {brushRadius}m</span>
+                <input
+                  type="range"
+                  min={10}
+                  max={100}
+                  value={brushRadius}
+                  onChange={e => setBrushRadius(Number(e.target.value))}
+                  className="w-20 accent-orange-500"
+                />
+              </label>
+            )}
+            {selectedIds.size > 0 && (
+              <button onClick={() => setSelectedIds(new Set())} className="ml-1 text-xs text-gray-400 hover:text-gray-600 shrink-0">
+                Clear selection
+              </button>
+            )}
+
+            {/* Active tool description — only shows when a tool is clicked */}
+            {drawMode !== 'none' && (
+              <span className="ml-2 text-xs font-medium text-orange-600 whitespace-nowrap overflow-hidden">
+                {DESCRIPTIONS[drawMode]}
+              </span>
+            )}
+
+            {/* RIGHT: map legend + total count */}
+            <div className="ml-auto flex items-center gap-4 shrink-0">
+              <div className="flex items-center gap-3 text-xs text-gray-500">
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#3d8888' }} /> Not voted
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#16a34a' }} /> You supported
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#dc2626' }} /> You opposed
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-400 border-l border-gray-200 pl-4">
+                <span>{(rawGeojson?.total_spots ?? parkingCount)?.toLocaleString() ?? '—'} total spaces</span>
+                {zoom < MIN_ZOOM && <span className="text-orange-500 font-medium">· Zoom in to see spaces</span>}
+              </div>
+            </div>
+
+          </div>
+        )
+      })()}
 
       {/* Map + side panel */}
       <div className="flex flex-1 overflow-hidden relative">
         <MapContainer
           center={[37.8044, -122.2712]}
-          zoom={13}
+          zoom={14}
           style={{ flex: 1, height: '100%' }}
           zoomControl
         >
@@ -945,6 +1141,7 @@ export default function ParkingVotePage() {
 
           <RectangleDrawTool active={drawMode === 'rectangle'} onComplete={handleRectComplete} />
           <CircleDrawTool active={drawMode === 'circle'} onComplete={handleCircleComplete} />
+          <PolygonDrawTool active={drawMode === 'polygon'} onComplete={handlePolygonComplete} />
           <PaintBrushTool
             active={drawMode === 'paint'}
             brushRadius={brushRadius}
