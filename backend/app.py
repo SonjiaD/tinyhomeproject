@@ -146,6 +146,17 @@ def default_map():
     sites = subset.to_dict(orient="records")
     return jsonify({"sites": sites})
 
+@app.route("/api/votes/summary", methods=["GET"])
+def get_votes_summary():
+    if not supabase:
+        return jsonify({"total_yes": 0}), 200
+    try:
+        result = supabase.table("votes").select("support").eq("support", True).execute()
+        return jsonify({"total_yes": len(result.data)}), 200
+    except Exception as e:
+        print(f"Error fetching vote summary: {e}")
+        return jsonify({"total_yes": 0}), 200
+
 @app.route("/api/votes", methods=["GET"])
 def get_votes():
     if not supabase:

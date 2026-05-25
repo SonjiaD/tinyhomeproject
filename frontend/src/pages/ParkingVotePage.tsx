@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { MapContainer, TileLayer, useMap, useMapEvents, Circle, Rectangle } from 'react-leaflet'
 import L, { LatLngBounds, LatLng } from 'leaflet'
 import axios from 'axios'
+import confetti from 'canvas-confetti'
 import type { VoteSite, VoteTally, VoteCountsMap } from '../lib/types'
 import { useParkingCount } from '../lib/useParkingCount'
 import { computeAllBounds, type DistanceBounds } from '../lib/normalization'
@@ -13,6 +15,42 @@ const API = import.meta.env.VITE_API_URL || ''
 const MIN_ZOOM = 14
 
 type DrawMode = 'none' | 'rectangle' | 'circle'
+
+// ── Milestone config ──────────────────────────────────────────────────────────
+const MILESTONES = [
+  { key: 'first', pct: 0, label: 'Your first spot!', sub: 'Keep going — every vote counts.' },
+  { key: '10',    pct: 10, label: "10% — you're on your way!", sub: 'A solid start. The map is taking shape.' },
+  { key: '25',    pct: 25, label: "Quarter of the way there!", sub: "You've committed to real change." },
+  { key: '50',    pct: 50, label: "Halfway! You're making history.", sub: null }, // uses card overlay
+  { key: '75',    pct: 75, label: "Almost there — the finish line is in sight.", sub: null },
+]
+
+const GOAL_COPY: Record<number, { heading: string; impact: string }> = {
+  6000:  { heading: "You've proved the concept.", impact: "You've pledged 6,000 new homes for Oakland." },
+  18000: { heading: "You've closed the housing gap.", impact: "You've pledged 18,000 new homes for Oakland." },
+  30000: { heading: "You've ended the affordability crisis.", impact: "You've pledged 30,000 new homes for Oakland." },
+}
+
+function fireBurst(intensity: 'small' | 'medium' | 'center') {
+  if (intensity === 'small') {
+    confetti({ particleCount: 60, spread: 70, origin: { y: 0.3 }, colors: ['#2d9d8f','#f97316','#fbbf24','#34d399'] })
+  } else if (intensity === 'medium') {
+    confetti({ particleCount: 100, spread: 90, origin: { y: 0.3 }, colors: ['#2d9d8f','#f97316','#fbbf24','#34d399'] })
+  } else {
+    confetti({ particleCount: 150, spread: 120, origin: { y: 0.5 }, colors: ['#2d9d8f','#f97316','#fbbf24','#34d399'] })
+  }
+}
+
+function fireSlowRain() {
+  const duration = 4500
+  const end = Date.now() + duration
+  const colors = ['#2d9d8f','#f97316','#fbbf24','#34d399','#a78bfa']
+  ;(function frame() {
+    confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors })
+    confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors })
+    if (Date.now() < end) requestAnimationFrame(frame)
+  })()
+}
 
 // ── GeoJSON feature → VoteSite (for SitePanel) ───────────────────────────────
 function featureToVoteSite(props: any, coords: number[][]): VoteSite {
@@ -238,6 +276,89 @@ export default function ParkingVotePage() {
   const [batchSubmitting, setBatchSubmitting] = useState(false)
   const [batchError, setBatchError] = useState<string | null>(null)
 
+  // ── Progress / milestones / celebrations ─────────────────────────────────
+  const userGoal: number = (user?.user_metadata?.goal as number) ?? 6000
+  const [communityTotal, setCommunityTotal] = useState<number | null>(null)
+  const [toast, setToast] = useState<{ label: string; sub?: string | null } | null>(null)
+  const [halfwayCard, setHalfwayCard] = useState(false)
+  const [celebModal, setCelebModal] = useState(false)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const yesCount = Object.values(userVotes).filter(Boolean).length
+  const progressPct = Math.min(100, Math.round((yesCount / userGoal) * 100))
+
+  function showToast(label: string, sub?: string | null) {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setToast({ label, sub })
+    toastTimer.current = setTimeout(() => setToast(null), 3500)
+  }
+
+  function getMilestonesKey() { return `celebrated_milestones_${userGoal}` }
+
+  function getFiredMilestones(): string[] {
+    try { return JSON.parse(localStorage.getItem(getMilestonesKey()) ?? '[]') } catch { return [] }
+  }
+
+  function markMilestoneFired(key: string) {
+    const fired = getFiredMilestones()
+    if (!fired.includes(key)) localStorage.setItem(getMilestonesKey(), JSON.stringify([...fired, key]))
+  }
+
+  function checkMilestones(newYesCount: number, prevYesCount: number) {
+    const fired = getFiredMilestones()
+    const toFire: typeof MILESTONES = []
+
+    // First vote
+    if (newYesCount >= 1 && prevYesCount === 0 && !fired.includes('first')) {
+      toFire.push(MILESTONES[0])
+    }
+    // Percentage milestones
+    for (const m of MILESTONES.slice(1)) {
+      const threshold = Math.ceil(userGoal * m.pct / 100)
+      if (newYesCount >= threshold && prevYesCount < threshold && !fired.includes(m.key)) {
+        toFire.push(m)
+      }
+    }
+    // 100% goal
+    if (newYesCount >= userGoal && prevYesCount < userGoal && !fired.includes('100')) {
+      toFire.push({ key: '100', pct: 100, label: '', sub: null })
+    }
+
+    // Fire sequentially with delay
+    toFire.forEach((m, i) => {
+      setTimeout(() => {
+        markMilestoneFired(m.key)
+        if (m.key === '100') {
+          fireSlowRain()
+          setTimeout(() => setCelebModal(true), 800)
+        } else if (m.key === '50') {
+          fireBurst('center')
+          setHalfwayCard(true)
+          setTimeout(() => setHalfwayCard(false), 3500)
+        } else if (m.key === '25' || m.key === '75') {
+          fireBurst('medium')
+          showToast(m.label, m.sub)
+        } else {
+          fireBurst('small')
+          showToast(m.label, m.sub)
+        }
+      }, i * 400)
+    })
+  }
+
+  // Poll community total every 30s
+  useEffect(() => {
+    async function fetchTotal() {
+      try {
+        const res = await axios.get(`${API}/api/votes/summary`)
+        setCommunityTotal(res.data.total_yes ?? null)
+      } catch { /* non-critical */ }
+    }
+    fetchTotal()
+    const interval = setInterval(fetchTotal, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
   // Load this user's prior votes from localStorage
   useEffect(() => {
     if (!user?.id) return
@@ -251,8 +372,14 @@ export default function ParkingVotePage() {
     if (!user?.id) return
     const stored = localStorage.getItem('parkingVotes_v1')
     const all = stored ? JSON.parse(stored) as Record<string, Record<string, boolean>> : {}
-    all[user.id] = { ...(all[user.id] ?? {}), [siteId]: support }
+    const prev = all[user.id] ?? {}
+    const prevYes = Object.values(prev).filter(Boolean).length
+    all[user.id] = { ...prev, [siteId]: support }
     localStorage.setItem('parkingVotes_v1', JSON.stringify(all))
+    if (support) {
+      const newYes = Object.values(all[user.id]).filter(Boolean).length
+      checkMilestones(newYes, prevYes)
+    }
   }
 
   // Prevent body scroll — this page is fully self-contained
@@ -340,7 +467,19 @@ export default function ParkingVotePage() {
         for (const id of ids) next[id] = support
         return next
       })
-      for (const id of ids) persistVote(id, support)
+      // For batches, compute milestone check once across the whole batch
+      const prevYes = Object.values(userVotes).filter(Boolean).length
+      if (!user?.id) return
+      const stored = localStorage.getItem('parkingVotes_v1')
+      const all = stored ? JSON.parse(stored) as Record<string, Record<string, boolean>> : {}
+      const userMap = { ...(all[user.id] ?? {}) }
+      for (const id of ids) userMap[id] = support
+      all[user.id] = userMap
+      localStorage.setItem('parkingVotes_v1', JSON.stringify(all))
+      if (support) {
+        const newYes = Object.values(userMap).filter(Boolean).length
+        checkMilestones(newYes, prevYes)
+      }
       setSelectedIds(new Set()); setBatchComment('')
     } catch {
       setBatchError('Failed to save votes. Please try again.')
@@ -384,8 +523,104 @@ export default function ParkingVotePage() {
     : null
   const selectedTally = selectedId ? (voteCounts[selectedId] ?? { yes: 0, no: 0, total: 0 }) : { yes: 0, no: 0, total: 0 }
 
+  const goalCopy = GOAL_COPY[userGoal] ?? GOAL_COPY[6000]
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
+
+      {/* ── Progress header ─────────────────────────────────────────────── */}
+      <div className="bg-primary-900 px-5 py-2.5 flex items-center gap-5 shrink-0 border-b border-primary-800">
+        {/* Goal + change link */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-teal-400 font-semibold uppercase tracking-wide">Goal</span>
+          <span className="text-white font-bold text-sm">{userGoal.toLocaleString()}</span>
+          <Link to="/profile" className="text-teal-500 hover:text-teal-300 text-xs underline underline-offset-2 transition-colors">change</Link>
+        </div>
+
+        {/* Progress bar */}
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-xs text-teal-300">{yesCount.toLocaleString()} spots voted</span>
+            <span className="text-xs text-teal-400 font-semibold">{progressPct}%</span>
+          </div>
+          <div className="relative w-full h-2 bg-white/10 rounded-full overflow-visible">
+            <div
+              className="h-2 bg-teal-400 rounded-full transition-all duration-500"
+              style={{ width: `${progressPct}%` }}
+            />
+            {/* Milestone tick marks */}
+            {[10, 25, 50, 75].map(pct => (
+              <div
+                key={pct}
+                className="absolute top-0 w-0.5 h-2 bg-white/30"
+                style={{ left: `${pct}%` }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Community ticker */}
+        {communityTotal !== null && (
+          <div className="shrink-0 text-right">
+            <p className="text-xs text-teal-400 font-semibold uppercase tracking-wide">Community</p>
+            <p className="text-white font-bold text-sm">{communityTotal.toLocaleString()} pledged</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Toast notification ──────────────────────────────────────────── */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[9998] bg-primary-900 border border-teal-600 rounded-2xl px-5 py-3.5 shadow-xl max-w-xs animate-fade-in-up">
+          <p className="text-white font-semibold text-sm">{toast.label}</p>
+          {toast.sub && <p className="text-teal-300 text-xs mt-0.5">{toast.sub}</p>}
+        </div>
+      )}
+
+      {/* ── Halfway card overlay ────────────────────────────────────────── */}
+      {halfwayCard && (
+        <div className="fixed inset-0 flex items-center justify-center z-[9997] pointer-events-none">
+          <div className="bg-primary-900 border border-teal-500 rounded-3xl px-8 py-6 shadow-2xl text-center max-w-xs animate-fade-in-up">
+            <p className="text-3xl mb-2">🎉</p>
+            <p className="text-white font-bold text-xl">Halfway there!</p>
+            <p className="text-teal-300 text-sm mt-1">
+              You've pledged {Math.round(userGoal / 2).toLocaleString()} homes for Oakland.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── 100% Celebration modal ──────────────────────────────────────── */}
+      {celebModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-6">
+          <div className="bg-primary-900 border border-teal-500 rounded-3xl px-8 py-8 shadow-2xl text-center max-w-sm w-full">
+            <p className="text-4xl mb-4">🏠</p>
+            <h2 className="text-white font-bold text-2xl mb-2">{goalCopy.heading}</h2>
+            <p className="text-teal-300 text-base mb-6">{goalCopy.impact}</p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({ title: 'I helped solve Oakland\'s housing crisis', url: window.location.href })
+                  } else {
+                    navigator.clipboard.writeText(window.location.href)
+                    showToast('Link copied!', 'Share it with friends.')
+                  }
+                }}
+                className="bg-teal-500 hover:bg-teal-400 text-white font-bold py-3 rounded-full transition-all"
+              >
+                Share my map ↗
+              </button>
+              <button
+                onClick={() => setCelebModal(false)}
+                className="text-teal-300/60 hover:text-teal-300 text-sm transition-colors"
+              >
+                Keep going →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-3 shrink-0">
         <span className="text-sm font-semibold text-gray-700">Selection tools:</span>

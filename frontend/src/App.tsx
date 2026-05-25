@@ -1,9 +1,9 @@
-import { BrowserRouter as Router, Routes, Route, NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, NavLink, Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { AuthGuard } from './components/AuthGuard'
 import AHPPage from './pages/AHPPage'
 import AboutPage from './pages/AboutPage'
-import HomePage from './pages/HomePage'
+// import HomePage from './pages/HomePage'
 import LinearWeightingPage from './pages/LinearWeightingPage'
 import VotePage from './pages/VotePage'
 import SuggestPage from './pages/SuggestPage'
@@ -13,16 +13,18 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import OnboardingGoalPage from './pages/OnboardingGoalPage'
+import ProfilePage from './pages/ProfilePage'
 
 const PRE_AUTH_ROUTES = ['/', '/login', '/signup', '/onboarding/goal']
 
 const navLinks = [
-  { to: '/home', label: 'Home' },
+  // { to: '/home', label: 'Home' },
   { to: '/parking-vote', label: 'Vote on Parking' },
   // { to: '/vote', label: 'Community Vote' },
   // { to: '/suggest', label: 'Suggest a Location' },
   // { to: '/polygon-map', label: 'Parking Spots' },
   { to: '/about', label: 'About' },
+  { to: '/profile', label: 'Profile' },
 ]
 
 function NavBar() {
@@ -75,7 +77,7 @@ function AppShell() {
   return (
     <div className="h-screen bg-surface-page flex flex-col overflow-hidden">
       <NavBar />
-      <div className="flex-1 min-h-0 flex flex-col overflow-auto">
+      <div id="main-scroll" className="flex-1 min-h-0 flex flex-col overflow-auto">
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
@@ -87,11 +89,12 @@ function AppShell() {
         <Route path="/onboarding/goal" element={<AuthGuard><OnboardingGoalPage /></AuthGuard>} />
 
         {/* Authenticated app routes */}
-        <Route path="/home" element={<AuthGuard><HomePage /></AuthGuard>} />
+        <Route path="/home" element={<Navigate to="/parking-vote" replace />} />
         <Route path="/vote" element={<AuthGuard><VotePage /></AuthGuard>} />
         <Route path="/suggest" element={<AuthGuard><SuggestPage /></AuthGuard>} />
         <Route path="/parking-vote" element={<AuthGuard><ParkingVotePage /></AuthGuard>} />
         <Route path="/polygon-map" element={<AuthGuard><PolygonMapPage /></AuthGuard>} />
+        <Route path="/profile" element={<AuthGuard><ProfilePage /></AuthGuard>} />
         <Route path="/ahp" element={<AuthGuard><AHPPage /></AuthGuard>} />
         <Route path="/linear" element={<AuthGuard><LinearWeightingPage /></AuthGuard>} />
       </Routes>

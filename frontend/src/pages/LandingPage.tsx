@@ -479,7 +479,7 @@ export default function LandingPage() {
   const parkingCount = rawParkingCount ?? 0
 
   useEffect(() => {
-    if (!loading && user) navigate('/home', { replace: true })
+    if (!loading && user) navigate('/parking-vote', { replace: true })
   }, [user, loading, navigate])
 
   const go = useCallback((next: number, dir?: number) => {

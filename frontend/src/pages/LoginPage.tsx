@@ -19,7 +19,7 @@ export default function LoginPage() {
     if (error) {
       setError('Invalid email or password. Please try again.')
     } else {
-      navigate('/home')
+      navigate('/parking-vote')
     }
   }
 
