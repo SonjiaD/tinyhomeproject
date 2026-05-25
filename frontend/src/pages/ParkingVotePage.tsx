@@ -101,10 +101,11 @@ interface ParkingLayerProps {
   drawModeRef: React.MutableRefObject<DrawMode>
   onSelectId: (id: string) => void
   layerMapRef?: React.MutableRefObject<Map<string, L.Path>>
+  onReady?: () => void
 }
 
 function ParkingLayer({
-  geojson, visible, voteCounts, userVotes, selectedId, selectedIds, drawModeRef, onSelectId, layerMapRef,
+  geojson, visible, voteCounts, userVotes, selectedId, selectedIds, drawModeRef, onSelectId, layerMapRef, onReady,
 }: ParkingLayerProps) {
   const map = useMap()
   const layerRef = useRef<L.GeoJSON | null>(null)
@@ -166,6 +167,7 @@ function ParkingLayer({
       layer.addData({ type: 'FeatureCollection', features: features.slice(i, i + CHUNK) } as any)
       i += CHUNK
       if (i < features.length) setTimeout(addChunk, 0)
+      else if (!cancelled) onReady?.()
     }
     addChunk()
 
@@ -697,7 +699,6 @@ export default function ParkingVotePage() {
       setRawGeojson(geojson)
       setAllBounds(computeAllBounds(sitesForBounds))
       setVoteCounts(voteRes.data || {})
-      setLoading(false)
     }
     load()
   }, [])
@@ -1136,6 +1137,7 @@ export default function ParkingVotePage() {
               drawModeRef={drawModeRef}
               onSelectId={handleSelectId}
               layerMapRef={paintLayerMapRef}
+              onReady={() => setLoading(false)}
             />
           )}
 
