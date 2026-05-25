@@ -192,6 +192,10 @@ function RectangleDrawTool({ active, onComplete }: { active: boolean; onComplete
     const move = (e: MouseEvent) => { if (start.current) setPreview(new LatLngBounds(start.current, pt(e))) }
     const up = (e: MouseEvent) => {
       if (!start.current) return
+      // Block the click event that the browser fires after mouseup — by the time it
+      // arrives, React will have already reset drawModeRef.current to 'none', so the
+      // layer click guard would be bypassed without this capture-phase block.
+      map.getContainer().addEventListener('click', ev => ev.stopImmediatePropagation(), { capture: true, once: true })
       onComplete(new LatLngBounds(start.current, pt(e)))
       start.current = null; setPreview(null)
     }
@@ -234,6 +238,7 @@ function CircleDrawTool({ active, onComplete }: { active: boolean; onComplete: (
     const up = (e: MouseEvent) => {
       if (!center.current) return
       const edge = pt(e)
+      map.getContainer().addEventListener('click', ev => ev.stopImmediatePropagation(), { capture: true, once: true })
       onComplete(center.current, haversine(center.current.lat, center.current.lng, edge.lat, edge.lng))
       center.current = null; setPreview(null)
     }
@@ -283,7 +288,12 @@ export default function ParkingVotePage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [drawMode, setDrawMode] = useState<DrawMode>('none')
   const drawModeRef = useRef<DrawMode>('none')
-  useEffect(() => { drawModeRef.current = drawMode }, [drawMode])
+  // Keep drawModeRef.current updated synchronously — never via useEffect — so
+  // Leaflet click guards always see the current mode even during React batching.
+  function setDrawModeSync(mode: DrawMode) {
+    drawModeRef.current = mode
+    setDrawMode(mode)
+  }
 
   const [batchComment, setBatchComment] = useState('')
   const [batchSubmitting, setBatchSubmitting] = useState(false)
@@ -434,7 +444,7 @@ export default function ParkingVotePage() {
         .filter((f: any) => { const [lon, lat] = f.geometry.coordinates[0][0]; return bounds.contains([lat, lon]) })
         .map((f: any) => f.properties.id)
     )
-    setSelectedIds(ids); setSelectedId(null); setDrawMode('none')
+    setSelectedIds(ids); setSelectedId(null); setDrawModeSync('none')
   }, [rawGeojson])
 
   const handleCircleComplete = useCallback((center: LatLng, radiusM: number) => {
@@ -444,10 +454,11 @@ export default function ParkingVotePage() {
         .filter((f: any) => { const [lon, lat] = f.geometry.coordinates[0][0]; return haversine(center.lat, center.lng, lat, lon) <= radiusM })
         .map((f: any) => f.properties.id)
     )
-    setSelectedIds(ids); setSelectedId(null); setDrawMode('none')
+    setSelectedIds(ids); setSelectedId(null); setDrawModeSync('none')
   }, [rawGeojson])
 
   const handleSelectId = useCallback((id: string) => {
+    if (drawModeRef.current !== 'none') return
     setSelectedId(id); setSelectedIds(new Set())
   }, [])
 
@@ -714,11 +725,11 @@ export default function ParkingVotePage() {
         {(['rectangle', 'circle'] as DrawMode[]).map(mode => (
           <button
             key={mode}
-            onClick={() => setDrawMode(m => m === mode ? 'none' : mode)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${
+            onClick={() => setDrawModeSync(drawMode === mode ? 'none' : mode as DrawMode)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize border ${
               drawMode === mode
-                ? 'bg-orange-100 text-orange-700 border border-orange-300'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-orange-100 text-orange-700 border-orange-300'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-transparent'
             }`}
           >
             {mode === 'rectangle'
@@ -733,11 +744,9 @@ export default function ParkingVotePage() {
             Clear selection
           </button>
         )}
-        {drawMode !== 'none' && (
-          <span className="ml-2 text-xs text-orange-600 font-medium animate-pulse">
-            {drawMode === 'rectangle' ? 'Drag to select an area' : 'Drag to draw a circle'}
-          </span>
-        )}
+        <span className={`ml-2 text-xs font-medium ${drawMode !== 'none' ? 'text-orange-600 animate-pulse' : 'invisible'}`}>
+          {drawMode === 'circle' ? 'Drag to draw a circle' : 'Drag to select an area'}
+        </span>
         <div className="flex items-center gap-3 text-xs text-gray-500">
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#3d8888' }} /> Not voted
