@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { MapContainer, TileLayer, useMap, useMapEvents, Circle, Rectangle } from 'react-leaflet'
 import L, { LatLngBounds, LatLng } from 'leaflet'
 import axios from 'axios'
@@ -14,7 +14,7 @@ import { useAuth } from '../contexts/AuthContext'
 const API = import.meta.env.VITE_API_URL || ''
 const MIN_ZOOM = 14
 
-type DrawMode = 'none' | 'rectangle' | 'circle'
+type DrawMode = 'none' | 'rectangle' | 'circle' | 'paint'
 
 // ── Milestone config ──────────────────────────────────────────────────────────
 const MILESTONES = [
@@ -88,10 +88,11 @@ interface ParkingLayerProps {
   selectedIds: Set<string>
   drawModeRef: React.MutableRefObject<DrawMode>
   onSelectId: (id: string) => void
+  layerMapRef?: React.MutableRefObject<Map<string, L.Path>>
 }
 
 function ParkingLayer({
-  geojson, visible, voteCounts, userVotes, selectedId, selectedIds, drawModeRef, onSelectId,
+  geojson, visible, voteCounts, userVotes, selectedId, selectedIds, drawModeRef, onSelectId, layerMapRef,
 }: ParkingLayerProps) {
   const map = useMap()
   const layerRef = useRef<L.GeoJSON | null>(null)
@@ -124,6 +125,13 @@ function ParkingLayer({
     let cancelled = false
 
     const layer = L.geoJSON(undefined, { style: computeStyle })
+
+    // Build id → layer map for O(1) imperative styling during paint
+    if (layerMapRef) layerMapRef.current = new Map()
+    layer.on('layeradd', (e: any) => {
+      const id = e.layer?.feature?.properties?.id
+      if (id && layerMapRef) layerMapRef.current.set(id, e.layer as L.Path)
+    })
 
     // One click handler on the parent layer instead of one per feature
     layer.on('click', (e: L.LeafletMouseEvent) => {
@@ -260,6 +268,98 @@ function CircleDrawTool({ active, onComplete }: { active: boolean; onComplete: (
   return <Circle center={preview.center} radius={preview.radius} pathOptions={{ color: '#f97316', weight: 2, fillOpacity: 0.1 }} />
 }
 
+// ── Paint brush tool ──────────────────────────────────────────────────────────
+interface PaintBrushToolProps {
+  active: boolean
+  brushRadius: number
+  candidates: { id: string; lat: number; lon: number }[]
+  onAddSpots: (ids: string[]) => void      // called every hit-test for imperative styling
+  onComplete: (allPaintedIds: string[]) => void  // called on mouseup to commit to state
+}
+
+function PaintBrushTool({ active, brushRadius, candidates, onAddSpots, onComplete }: PaintBrushToolProps) {
+  const map = useMap()
+  const isPainting = useRef(false)
+  const lastCheckRef = useRef(0)
+  const paintedInStroke = useRef(new Set<string>())
+  const [cursorPos, setCursorPos] = useState<LatLng | null>(null)
+
+  useEffect(() => {
+    if (!active) { setCursorPos(null); return }
+    map.getContainer().style.cursor = 'none'
+    map.dragging.disable()
+
+    const pt = (e: MouseEvent) => map.mouseEventToLatLng(e as any)
+
+    function spotHit(pos: LatLng): string[] {
+      const latDelta = brushRadius / 111320
+      const lonDelta = brushRadius / (111320 * Math.cos((pos.lat * Math.PI) / 180))
+      return candidates
+        .filter(c =>
+          Math.abs(c.lat - pos.lat) <= latDelta &&
+          Math.abs(c.lon - pos.lng) <= lonDelta &&
+          haversine(pos.lat, pos.lng, c.lat, c.lon) <= brushRadius
+        )
+        .filter(c => !paintedInStroke.current.has(c.id))
+        .map(c => c.id)
+    }
+
+    const down = (e: MouseEvent) => {
+      isPainting.current = true
+      paintedInStroke.current = new Set()
+      const hit = spotHit(pt(e))
+      hit.forEach(id => paintedInStroke.current.add(id))
+      if (hit.length) onAddSpots(hit)
+    }
+
+    const move = (e: MouseEvent) => {
+      const pos = pt(e)
+      setCursorPos(pos)
+      if (!isPainting.current) return
+      const now = Date.now()
+      if (now - lastCheckRef.current < 50) return
+      lastCheckRef.current = now
+      const hit = spotHit(pos)
+      hit.forEach(id => paintedInStroke.current.add(id))
+      if (hit.length) onAddSpots(hit)
+    }
+
+    const up = () => {
+      if (!isPainting.current) return
+      map.getContainer().addEventListener('click', ev => ev.stopImmediatePropagation(), { capture: true, once: true })
+      isPainting.current = false
+      onComplete(Array.from(paintedInStroke.current))
+      paintedInStroke.current = new Set()
+    }
+
+    const leave = () => setCursorPos(null)
+
+    const c = map.getContainer()
+    c.addEventListener('mousedown', down)
+    c.addEventListener('mousemove', move)
+    c.addEventListener('mouseup', up)
+    c.addEventListener('mouseleave', leave)
+    return () => {
+      c.removeEventListener('mousedown', down)
+      c.removeEventListener('mousemove', move)
+      c.removeEventListener('mouseup', up)
+      c.removeEventListener('mouseleave', leave)
+      map.getContainer().style.cursor = ''
+      map.dragging.enable()
+      isPainting.current = false
+    }
+  }, [active, map, brushRadius, candidates, onAddSpots, onComplete])
+
+  if (!cursorPos) return null
+  return (
+    <Circle
+      center={cursorPos}
+      radius={brushRadius}
+      pathOptions={{ color: '#f97316', weight: 2, fillColor: '#f97316', fillOpacity: 0.08, dashArray: '4 4' }}
+    />
+  )
+}
+
 // Projects annual Oakland tax revenue per pledged unit of tiny home housing.
 // Assumes $1,000/mo rent (affordable housing target).
 //   BLT (Business License Tax): gross rent × Oakland BLT rate of 1.395%
@@ -294,6 +394,11 @@ export default function ParkingVotePage() {
     drawModeRef.current = mode
     setDrawMode(mode)
   }
+
+  const [brushRadius, setBrushRadius] = useState(30)
+  const paintLayerMapRef = useRef<Map<string, L.Path>>(new Map())
+  // Orange style matching computeStyle for a selected unvoted spot
+  const PAINT_STYLE: L.PathOptions = { fillColor: '#f97316', color: '#ea580c', weight: 2, fillOpacity: 0.82 }
 
   const [batchComment, setBatchComment] = useState('')
   const [batchSubmitting, setBatchSubmitting] = useState(false)
@@ -457,6 +562,29 @@ export default function ParkingVotePage() {
     setSelectedIds(ids); setSelectedId(null); setDrawModeSync('none')
   }, [rawGeojson])
 
+  const paintCandidates = useMemo(() =>
+    rawGeojson?.features.map((f: any) => {
+      const [lon, lat] = f.geometry.coordinates[0][0]
+      return { id: f.properties.id as string, lat, lon }
+    }) ?? []
+  , [rawGeojson])
+
+  // Imperatively style only the newly hit spots — O(painted) not O(65k), no React re-render
+  const handlePaintAddSpots = useCallback((newIds: string[]) => {
+    newIds.forEach(id => (paintLayerMapRef.current.get(id) as L.Path | undefined)?.setStyle(PAINT_STYLE))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Called once per stroke on mouseup — commits painted IDs to state (triggers one full setStyle)
+  const handlePaintComplete = useCallback((allIds: string[]) => {
+    if (allIds.length === 0) return
+    setSelectedId(null)
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      allIds.forEach(id => next.add(id))
+      return next
+    })
+  }, [])
+
   const handleSelectId = useCallback((id: string) => {
     if (drawModeRef.current !== 'none') return
     setSelectedId(id); setSelectedIds(new Set())
@@ -545,7 +673,15 @@ export default function ParkingVotePage() {
     setCommunityTotal(prev => prev !== null ? prev - ids.filter(id => userVotes[id] === true).length : prev)
     const prevVotes = { ...userVotes }
     setUserVotes(prev => { const n = { ...prev }; ids.forEach(id => delete n[id]); return n })
-    ids.forEach(id => unpersistVote(id))
+    // Bulk localStorage clear — one read + one write instead of O(n) individual calls
+    const stored = localStorage.getItem('parkingVotes_v1')
+    if (stored) {
+      const all = JSON.parse(stored) as Record<string, Record<string, boolean>>
+      const userMap = { ...(all[user.id] ?? {}) }
+      ids.forEach(id => delete userMap[id])
+      all[user.id] = userMap
+      localStorage.setItem('parkingVotes_v1', JSON.stringify(all))
+    }
     setVoteCounts(prev => {
       const n = { ...prev }
       ids.forEach(id => {
@@ -722,7 +858,7 @@ export default function ParkingVotePage() {
       {/* Toolbar */}
       <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-3 shrink-0">
         <span className="text-sm font-semibold text-gray-700">Selection tools:</span>
-        {(['rectangle', 'circle'] as DrawMode[]).map(mode => (
+        {(['rectangle', 'circle', 'paint'] as DrawMode[]).map(mode => (
           <button
             key={mode}
             onClick={() => setDrawModeSync(drawMode === mode ? 'none' : mode as DrawMode)}
@@ -734,18 +870,33 @@ export default function ParkingVotePage() {
           >
             {mode === 'rectangle'
               ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="4" width="12" height="8" rx="1" /></svg>
-              : <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="5" /></svg>
+              : mode === 'circle'
+              ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="5" /></svg>
+              : <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 1.5l2 2-8.5 8.5-3 .5.5-3 9-8z" strokeLinejoin="round" strokeLinecap="round" /><path d="M2.5 13.5a1 1 0 101.5-1.3" strokeLinecap="round" /></svg>
             }
             {mode}
           </button>
         ))}
+        {drawMode === 'paint' && (
+          <label className="flex items-center gap-2 text-xs text-gray-600 ml-1">
+            <span className="shrink-0">Brush: {brushRadius}m</span>
+            <input
+              type="range"
+              min={10}
+              max={100}
+              value={brushRadius}
+              onChange={e => setBrushRadius(Number(e.target.value))}
+              className="w-20 accent-orange-500"
+            />
+          </label>
+        )}
         {selectedIds.size > 0 && (
           <button onClick={() => setSelectedIds(new Set())} className="ml-1 text-xs text-gray-400 hover:text-gray-600">
             Clear selection
           </button>
         )}
         <span className={`ml-2 text-xs font-medium ${drawMode !== 'none' ? 'text-orange-600 animate-pulse' : 'invisible'}`}>
-          {drawMode === 'circle' ? 'Drag to draw a circle' : 'Drag to select an area'}
+          {drawMode === 'circle' ? 'Drag to draw a circle' : drawMode === 'paint' ? 'Hold and drag to paint spots' : 'Drag to select an area'}
         </span>
         <div className="flex items-center gap-3 text-xs text-gray-500">
           <span className="flex items-center gap-1">
@@ -788,11 +939,19 @@ export default function ParkingVotePage() {
               selectedIds={selectedIds}
               drawModeRef={drawModeRef}
               onSelectId={handleSelectId}
+              layerMapRef={paintLayerMapRef}
             />
           )}
 
           <RectangleDrawTool active={drawMode === 'rectangle'} onComplete={handleRectComplete} />
           <CircleDrawTool active={drawMode === 'circle'} onComplete={handleCircleComplete} />
+          <PaintBrushTool
+            active={drawMode === 'paint'}
+            brushRadius={brushRadius}
+            candidates={paintCandidates}
+            onAddSpots={handlePaintAddSpots}
+            onComplete={handlePaintComplete}
+          />
         </MapContainer>
 
         {selectedSite && (
