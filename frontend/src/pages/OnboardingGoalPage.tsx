@@ -48,6 +48,14 @@ const ROLES = [
   { value: 'other',     label: 'Other',      Icon: Circle },
 ]
 
+const OWNERSHIP_OPTIONS = [
+  { value: 'property_owner',     label: 'Property owner',       subtext: 'The lot owner across the sidewalk' },
+  { value: 'city_owned',         label: 'City-owned & rented',  subtext: 'City builds and manages the units' },
+  { value: 'private_developer',  label: 'Private developer',    subtext: 'Developer pays city for a concession' },
+  { value: 'occupant_lot_lease', label: 'Occupant lot-lease',   subtext: 'Resident owns the home, pays city a fee' },
+  { value: 'other',              label: 'Other idea',           subtext: 'Tell us what you\'re thinking' },
+]
+
 const NEIGHBORHOODS = [
   "Adams Point", "Allendale", "Arroyo Viejo", "Bartlett", "Bella Vista",
   "Brookfield Village", "Caballo Hills", "Castlemont", "Chinatown", "Cleveland Heights",
@@ -77,12 +85,14 @@ export default function OnboardingGoalPage() {
     if (el) el.style.backgroundColor = '#0f2a2a'
     return () => { if (el) el.style.backgroundColor = '' }
   }, [])
-  const [step, setStep] = useState(0) // 0, 1, 2
+  const [step, setStep] = useState(0) // 0, 1, 2, 3
   const [dir, setDir] = useState(1)
   const [goal, setGoal] = useState<number | null>(null)
   const [neighborhood, setNeighborhood] = useState('')
   const [neighborhoodSearch, setNeighborhoodSearch] = useState('')
   const [roles, setRoles] = useState<string[]>([])
+  const [ownershipModel, setOwnershipModel] = useState<string | null>(null)
+  const [ownershipOther, setOwnershipOther] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -108,7 +118,13 @@ export default function OnboardingGoalPage() {
     if (goal === null) return
     setSaving(true)
     const { error } = await supabase.auth.updateUser({
-      data: { goal, neighborhood: neighborhood || null, roles },
+      data: {
+        goal,
+        neighborhood: neighborhood || null,
+        roles,
+        ownership_model: ownershipModel || null,
+        ownership_other: ownershipModel === 'other' ? ownershipOther || null : null,
+      },
     })
     setSaving(false)
     if (error) {
@@ -122,7 +138,13 @@ export default function OnboardingGoalPage() {
     if (goal === null) return
     setSaving(true)
     const { error } = await supabase.auth.updateUser({
-      data: { goal, neighborhood: neighborhood || null, roles },
+      data: {
+        goal,
+        neighborhood: neighborhood || null,
+        roles,
+        ownership_model: ownershipModel || null,
+        ownership_other: ownershipModel === 'other' ? ownershipOther || null : null,
+      },
     })
     setSaving(false)
     if (error) {
@@ -136,7 +158,7 @@ export default function OnboardingGoalPage() {
     // Step 1 — Goal
     <div key="goal" className="w-full max-w-4xl">
       <div className="text-center mb-10">
-        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 1 of 3</p>
+        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 1 of 4</p>
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
           How much of Oakland's housing crisis do you want to solve?
         </h1>
@@ -207,7 +229,7 @@ export default function OnboardingGoalPage() {
     // Step 2 — Neighborhood
     <div key="neighborhood" className="w-full max-w-xl">
       <div className="text-center mb-10">
-        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 2 of 3</p>
+        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 2 of 4</p>
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
           Which part of Oakland do you care about most?
         </h1>
@@ -287,7 +309,7 @@ export default function OnboardingGoalPage() {
     // Step 3 — Role
     <div key="role" className="w-full max-w-xl">
       <div className="text-center mb-10">
-        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 3 of 3</p>
+        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 3 of 4</p>
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
           What's your connection to Oakland?
         </h1>
@@ -321,14 +343,89 @@ export default function OnboardingGoalPage() {
 
       <div className="flex flex-col items-center gap-3">
         <button
+          onClick={goNext}
+          className="bg-teal-500 hover:bg-teal-400 text-white font-bold px-10 py-4 rounded-full text-lg transition-all duration-200 shadow-lg w-full max-w-xs"
+        >
+          Continue →
+        </button>
+        <button
+          onClick={handleSkipToEnd}
+          disabled={saving}
+          className="text-teal-300/50 hover:text-teal-300 text-sm transition-colors disabled:opacity-40"
+        >
+          Skip for now
+        </button>
+        <button onClick={goBack} className="text-teal-400/40 hover:text-teal-400 text-sm transition-colors">
+          ← Back
+        </button>
+      </div>
+    </div>,
+
+    // Step 4 — Ownership model
+    <div key="ownership" className="w-full max-w-xl">
+      <div className="text-center mb-10">
+        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 4 of 4</p>
+        <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+          Who should build and own these units?
+        </h1>
+        <p className="text-teal-300 leading-relaxed">
+          This helps us understand what kind of ordinance Oakland residents want.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 mb-4">
+        {OWNERSHIP_OPTIONS.map((o, i) => {
+          const isSelected = ownershipModel === o.value
+          return (
+            <motion.button
+              key={o.value}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 + i * 0.07 }}
+              onClick={() => setOwnershipModel(isSelected ? null : o.value)}
+              className={`text-left flex items-start gap-4 px-5 py-4 rounded-2xl border-2 transition-all duration-200 focus:outline-none ${
+                isSelected
+                  ? 'border-teal-400 bg-teal-400/20 ring-2 ring-teal-400/30'
+                  : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+              }`}
+            >
+              <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                isSelected ? 'border-teal-400 bg-teal-400' : 'border-white/30'
+              }`}>
+                {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+              </div>
+              <div>
+                <p className={`text-sm font-semibold ${isSelected ? 'text-teal-300' : 'text-teal-200/80'}`}>{o.label}</p>
+                <p className="text-xs text-teal-300/50 mt-0.5">{o.subtext}</p>
+              </div>
+            </motion.button>
+          )
+        })}
+      </div>
+
+      {ownershipModel === 'other' && (
+        <input
+          type="text"
+          placeholder="Describe your idea…"
+          value={ownershipOther}
+          onChange={e => setOwnershipOther(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-teal-400 focus:bg-white/10 transition-all mb-4 text-sm"
+          autoFocus
+        />
+      )}
+
+      {error && <p className="text-red-400 text-sm text-center mb-4 bg-red-400/10 rounded-lg px-4 py-2">{error}</p>}
+
+      <div className="flex flex-col items-center gap-3">
+        <button
           onClick={handleFinish}
-          disabled={roles.length === 0 || saving}
+          disabled={saving}
           className="bg-teal-500 hover:bg-teal-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-10 py-4 rounded-full text-lg transition-all duration-200 shadow-lg w-full max-w-xs"
         >
           {saving ? 'Setting up your map…' : 'Start Voting →'}
         </button>
         <button
-          onClick={handleSkipToEnd}
+          onClick={handleFinish}
           disabled={saving}
           className="text-teal-300/50 hover:text-teal-300 text-sm transition-colors disabled:opacity-40"
         >
@@ -345,7 +442,7 @@ export default function OnboardingGoalPage() {
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ background: '#0f2a2a' }}>
       {/* Progress dots */}
       <div className="flex gap-2 mb-10">
-        {[0, 1, 2].map(i => (
+        {[0, 1, 2, 3].map(i => (
           <div
             key={i}
             className={`rounded-full transition-all duration-300 ${

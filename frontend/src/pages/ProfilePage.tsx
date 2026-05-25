@@ -46,6 +46,14 @@ const ROLES = [
   { value: 'other',     label: 'Other',     Icon: Circle },
 ]
 
+const OWNERSHIP_OPTIONS = [
+  { value: 'property_owner',     label: 'Property owner',       subtext: 'The lot owner across the sidewalk' },
+  { value: 'city_owned',         label: 'City-owned & rented',  subtext: 'City builds and manages the units' },
+  { value: 'private_developer',  label: 'Private developer',    subtext: 'Developer pays city for a concession' },
+  { value: 'occupant_lot_lease', label: 'Occupant lot-lease',   subtext: 'Resident owns the home, pays city a fee' },
+  { value: 'other',              label: 'Other idea',           subtext: 'Tell us what you\'re thinking' },
+]
+
 const NEIGHBORHOODS = [
   "Adams Point", "Allendale", "Arroyo Viejo", "Bartlett", "Bella Vista",
   "Brookfield Village", "Caballo Hills", "Castlemont", "Chinatown", "Cleveland Heights",
@@ -71,6 +79,8 @@ export default function ProfilePage() {
   const [roles, setRoles] = useState<string[]>([])
   const [neighborhood, setNeighborhood] = useState('')
   const [neighborhoodSearch, setNeighborhoodSearch] = useState('')
+  const [ownershipModel, setOwnershipModel] = useState<string | null>(null)
+  const [ownershipOther, setOwnershipOther] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
@@ -84,6 +94,8 @@ export default function ProfilePage() {
       setNeighborhood(meta.neighborhood)
       setNeighborhoodSearch(meta.neighborhood === 'not-oakland' ? '' : meta.neighborhood)
     }
+    if (meta.ownership_model) setOwnershipModel(meta.ownership_model)
+    if (meta.ownership_other) setOwnershipOther(meta.ownership_other)
   }, [user])
 
   const filteredNeighborhoods = neighborhoodSearch.length > 0
@@ -99,7 +111,13 @@ export default function ProfilePage() {
     setSaving(true)
     setError('')
     const { error } = await supabase.auth.updateUser({
-      data: { goal, roles, neighborhood: neighborhood || null },
+      data: {
+        goal,
+        roles,
+        neighborhood: neighborhood || null,
+        ownership_model: ownershipModel || null,
+        ownership_other: ownershipModel === 'other' ? ownershipOther || null : null,
+      },
     })
     setSaving(false)
     if (error) {
@@ -184,6 +202,47 @@ export default function ProfilePage() {
               )
             })}
           </div>
+        </section>
+
+        {/* Ownership preference */}
+        <section className="mb-10">
+          <SectionLabel className="mb-1">Ownership Preference</SectionLabel>
+          <p className="text-gray-400 text-sm mb-4">Who do you think should build and own these units?</p>
+          <div className="flex flex-col gap-2">
+            {OWNERSHIP_OPTIONS.map(o => {
+              const isSelected = ownershipModel === o.value
+              return (
+                <button
+                  key={o.value}
+                  onClick={() => setOwnershipModel(isSelected ? null : o.value)}
+                  className={`text-left flex items-start gap-3 px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none ${
+                    isSelected
+                      ? 'border-teal-500 bg-teal-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                    isSelected ? 'border-teal-500 bg-teal-500' : 'border-gray-300'
+                  }`}>
+                    {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                  </div>
+                  <div>
+                    <p className={`text-sm font-semibold ${isSelected ? 'text-teal-700' : 'text-gray-700'}`}>{o.label}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{o.subtext}</p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+          {ownershipModel === 'other' && (
+            <input
+              type="text"
+              placeholder="Describe your idea…"
+              value={ownershipOther}
+              onChange={e => setOwnershipOther(e.target.value)}
+              className="mt-3 w-full max-w-sm bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all text-sm"
+            />
+          )}
         </section>
 
         {/* Neighborhood */}

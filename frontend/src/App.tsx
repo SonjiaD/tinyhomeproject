@@ -73,9 +73,22 @@ function NavBar() {
   )
 }
 
+function MobileBanner() {
+  return (
+    <div className="md:hidden fixed inset-0 z-[99999] bg-primary-900 flex flex-col items-center justify-center p-8 text-center">
+      <div className="text-5xl mb-5">🖥️</div>
+      <h2 className="text-white text-xl font-bold mb-3">Best Experienced on Desktop</h2>
+      <p className="text-primary-200 text-sm leading-relaxed max-w-xs">
+        This mapping tool is designed for desktop browsers. Please open it on a laptop or computer for the full experience.
+      </p>
+    </div>
+  )
+}
+
 function AppShell() {
   return (
     <div className="h-screen bg-surface-page flex flex-col overflow-hidden">
+      <MobileBanner />
       <NavBar />
       <div id="main-scroll" className="flex-1 min-h-0 flex flex-col overflow-auto">
       <Routes>
