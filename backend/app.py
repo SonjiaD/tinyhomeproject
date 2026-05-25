@@ -151,8 +151,9 @@ def get_votes_summary():
     if not supabase:
         return jsonify({"total_yes": 0}), 200
     try:
-        result = supabase.table("votes").select("support").eq("support", True).execute()
-        return jsonify({"total_yes": len(result.data)}), 200
+        # count="exact" returns the true total without the default 1,000-row page cap
+        result = supabase.table("votes").select("id", count="exact").eq("support", True).execute()
+        return jsonify({"total_yes": result.count or 0}), 200
     except Exception as e:
         print(f"Error fetching vote summary: {e}")
         return jsonify({"total_yes": 0}), 200

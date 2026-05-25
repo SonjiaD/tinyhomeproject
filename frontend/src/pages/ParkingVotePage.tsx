@@ -255,6 +255,19 @@ function CircleDrawTool({ active, onComplete }: { active: boolean; onComplete: (
   return <Circle center={preview.center} radius={preview.radius} pathOptions={{ color: '#f97316', weight: 2, fillOpacity: 0.1 }} />
 }
 
+// Projects annual Oakland tax revenue per pledged unit of tiny home housing.
+// Assumes $1,000/mo rent (affordable housing target).
+//   BLT (Business License Tax): gross rent × Oakland BLT rate of 1.395%
+//     → $1,000 × 12 × 0.01395 = $167.40 / unit / yr
+//   RAP (Rent Adjustment Program fee): $101 / unit / yr (Oakland flat fee)
+//   Total: $268.40 / unit / yr
+// Sources: Oakland Municipal Code 5.04 (BLT), Oakland RAP annual fee schedule.
+function formatTax(units: number): string {
+  const annual = units * 268.40
+  if (annual >= 1_000_000) return `$${(annual / 1_000_000).toFixed(1)}M`
+  return `$${Math.round(annual / 1000)}k`
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ParkingVotePage() {
   const { user } = useAuth()
@@ -563,7 +576,8 @@ export default function ParkingVotePage() {
         {communityTotal !== null && (
           <div className="shrink-0 text-right">
             <p className="text-xs text-teal-400 font-semibold uppercase tracking-wide">Community</p>
-            <p className="text-white font-bold text-sm">{communityTotal.toLocaleString()} pledged</p>
+            <p className="text-white font-bold text-sm">{communityTotal.toLocaleString()} units pledged</p>
+            <p className="text-teal-300/70 text-xs">{formatTax(communityTotal)} projected annual tax</p>
           </div>
         )}
       </div>
