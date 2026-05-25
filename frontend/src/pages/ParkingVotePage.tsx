@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link } from 'react-router-dom'
 import { MapContainer, TileLayer, useMap, useMapEvents, Circle, Rectangle } from 'react-leaflet'
 import L, { LatLngBounds, LatLng } from 'leaflet'
 import axios from 'axios'
@@ -292,6 +291,7 @@ export default function ParkingVotePage() {
   // ── Progress / milestones / celebrations ─────────────────────────────────
   const userGoal: number = (user?.user_metadata?.goal as number) ?? 6000
   const [communityTotal, setCommunityTotal] = useState<number | null>(null)
+  const [headerExpanded, setHeaderExpanded] = useState(false)
   const [toast, setToast] = useState<{ label: string; sub?: string | null } | null>(null)
   const [halfwayCard, setHalfwayCard] = useState(false)
   const [celebModal, setCelebModal] = useState(false)
@@ -542,42 +542,70 @@ export default function ParkingVotePage() {
     <div className="flex flex-col flex-1 overflow-hidden">
 
       {/* ── Progress header ─────────────────────────────────────────────── */}
-      <div className="bg-primary-900 px-5 py-2.5 flex items-center gap-5 shrink-0 border-b border-primary-800">
-        {/* Goal + change link */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-teal-400 font-semibold uppercase tracking-wide">Goal</span>
-          <span className="text-white font-bold text-sm">{userGoal.toLocaleString()}</span>
-          <Link to="/profile" className="text-teal-500 hover:text-teal-300 text-xs underline underline-offset-2 transition-colors">change</Link>
-        </div>
+      <div className="bg-primary-900 shrink-0 border-b border-primary-800">
 
-        {/* Progress bar */}
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-xs text-teal-300">{yesCount.toLocaleString()} spots voted</span>
-            <span className="text-xs text-teal-400 font-semibold">{progressPct}%</span>
+        {/* Collapsed bar — always visible */}
+        <button
+          onClick={() => setHeaderExpanded(prev => !prev)}
+          className="w-full px-5 py-2.5 flex items-center gap-3 focus:outline-none"
+        >
+          {/* YOUR PROGRESS label + numbers + mini bar + pct */}
+          <span className="text-teal-400 text-xs font-semibold uppercase tracking-widest shrink-0">Your Progress</span>
+          <span className="text-white text-xs font-bold shrink-0">{yesCount.toLocaleString()} / {userGoal.toLocaleString()}</span>
+          <div className="relative w-16 h-1.5 bg-white/10 rounded-full shrink-0 overflow-hidden">
+            <div className="h-full bg-teal-400 rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
           </div>
-          <div className="relative w-full h-2 bg-white/10 rounded-full overflow-visible">
-            <div
-              className="h-2 bg-teal-400 rounded-full transition-all duration-500"
-              style={{ width: `${progressPct}%` }}
-            />
-            {/* Milestone tick marks */}
-            {[10, 25, 50, 75].map(pct => (
-              <div
-                key={pct}
-                className="absolute top-0 w-0.5 h-2 bg-white/30"
-                style={{ left: `${pct}%` }}
-              />
-            ))}
-          </div>
-        </div>
+          <span className="text-teal-400 text-xs font-semibold shrink-0">{progressPct}%</span>
 
-        {/* Community ticker */}
-        {communityTotal !== null && (
-          <div className="shrink-0 text-right">
-            <p className="text-xs text-teal-400 font-semibold uppercase tracking-wide">Community</p>
-            <p className="text-white font-bold text-sm">{communityTotal.toLocaleString()} units pledged</p>
-            <p className="text-teal-300/70 text-xs">{formatTax(communityTotal)} projected annual tax</p>
+          {/* Divider */}
+          <span className="text-white/15 text-sm shrink-0">|</span>
+
+          {/* COMMUNITY label + number */}
+          {communityTotal !== null && (
+            <>
+              <span className="text-teal-400 text-xs font-semibold uppercase tracking-widest shrink-0">Community</span>
+              <span className="text-white text-xs font-bold shrink-0">{communityTotal.toLocaleString()} pledged</span>
+            </>
+          )}
+
+          {/* Spacer + chevron */}
+          <span className="ml-auto text-teal-400/50 text-xs shrink-0">
+            {headerExpanded ? '▲' : '▼'}
+          </span>
+        </button>
+
+        {/* Expanded panel */}
+        {headerExpanded && (
+          <div className="px-5 pb-4 flex gap-0 border-t border-white/5">
+            {/* Your Progress */}
+            <div className="flex-1 pt-3 pr-5">
+              <p className="text-xs text-teal-400 font-semibold uppercase tracking-widest mb-1">Your Progress</p>
+              <p className="text-white font-bold text-xl leading-none">{yesCount.toLocaleString()}</p>
+              <p className="text-teal-300/70 text-xs mt-0.5">of {userGoal.toLocaleString()} spots goal</p>
+              <div className="mt-2.5 relative w-full h-2 bg-white/10 rounded-full overflow-visible">
+                <div
+                  className="h-2 bg-teal-400 rounded-full transition-all duration-500"
+                  style={{ width: `${progressPct}%` }}
+                />
+                {[10, 25, 50, 75].map(pct => (
+                  <div key={pct} className="absolute top-0 w-0.5 h-2 bg-white/30" style={{ left: `${pct}%` }} />
+                ))}
+              </div>
+              <p className="text-teal-400 text-xs font-semibold mt-1">{progressPct}% complete</p>
+            </div>
+
+            {/* Vertical divider */}
+            <div className="w-px bg-white/10 mt-3 self-stretch" />
+
+            {/* Community */}
+            {communityTotal !== null && (
+              <div className="flex-1 pt-3 pl-5">
+                <p className="text-xs text-teal-400 font-semibold uppercase tracking-widest mb-1">Community</p>
+                <p className="text-white font-bold text-xl leading-none">{communityTotal.toLocaleString()}</p>
+                <p className="text-teal-300/70 text-xs mt-0.5">units pledged across Oakland</p>
+                <p className="text-teal-300/50 text-xs mt-2">{formatTax(communityTotal)} projected annual tax</p>
+              </div>
+            )}
           </div>
         )}
       </div>
