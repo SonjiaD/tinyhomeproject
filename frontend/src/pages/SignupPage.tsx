@@ -79,7 +79,7 @@ export default function SignupPage() {
               </p>
               <Link
                 to="/login"
-                className="inline-block bg-teal-500 hover:bg-teal-400 text-white font-bold px-8 py-3 rounded-xl transition-all duration-200"
+                className="inline-block bg-teal-500 hover:bg-teal-400 text-white font-bold px-8 py-3 rounded-full transition-all duration-200"
               >
                 Go to Log In
               </Link>
@@ -131,7 +131,7 @@ export default function SignupPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl transition-all duration-200 mt-2"
+                  className="w-full bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-white font-bold py-3.5 rounded-full transition-all duration-200 mt-2"
                 >
                   {loading ? 'Creating account…' : 'Create Account →'}
                 </button>
