@@ -16,6 +16,16 @@ const MIN_ZOOM = 14
 
 type DrawMode = 'none' | 'rectangle' | 'circle' | 'paint' | 'polygon'
 
+type NeighborhoodGeometry =
+  | { type: 'Polygon'; coordinates: number[][][] }
+  | { type: 'MultiPolygon'; coordinates: number[][][][] }
+
+interface NeighborhoodFeature {
+  type: 'Feature'
+  properties: { name: string; [key: string]: any }
+  geometry: NeighborhoodGeometry
+}
+
 // ── Milestone config ──────────────────────────────────────────────────────────
 const MILESTONES = [
   { key: 'first', pct: 0, label: 'Your first spot!', sub: 'Keep going. Every vote counts.' },
@@ -559,6 +569,14 @@ export default function ParkingVotePage() {
 
   const [brushRadius, setBrushRadius] = useState(30)
   const paintLayerMapRef = useRef<Map<string, L.Path>>(new Map())
+
+  // ── Neighborhood quick-select ─────────────────────────────────────────────
+  const [neighborhoods, setNeighborhoods] = useState<NeighborhoodFeature[]>([])
+  const [neighborhoodPanelOpen, setNeighborhoodPanelOpen] = useState(false)
+  const [neighborhoodSearch, setNeighborhoodSearch] = useState('')
+  const [activeNeighborhood, setActiveNeighborhood] = useState<NeighborhoodFeature | null>(null)
+  const neighborhoodBtnRef = useRef<HTMLButtonElement>(null)
+  const neighborhoodPanelRef = useRef<HTMLDivElement>(null)
   // Orange style matching computeStyle for a selected unvoted spot
   const PAINT_STYLE: L.PathOptions = { fillColor: '#f97316', color: '#ea580c', weight: 2, fillOpacity: 0.82 }
 
@@ -703,6 +721,30 @@ export default function ParkingVotePage() {
     load()
   }, [])
 
+  useEffect(() => {
+    fetch('/oakland_neighborhoods.geojson')
+      .then(r => r.json())
+      .then(data => {
+        const features: NeighborhoodFeature[] = (data.features ?? [])
+          .filter((f: any) => f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon')
+          .sort((a: any, b: any) => (a.properties.name ?? '').localeCompare(b.properties.name ?? ''))
+        setNeighborhoods(features)
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!neighborhoodPanelOpen) return
+    function handleOutside(e: MouseEvent) {
+      if (
+        neighborhoodPanelRef.current && !neighborhoodPanelRef.current.contains(e.target as Node) &&
+        neighborhoodBtnRef.current && !neighborhoodBtnRef.current.contains(e.target as Node)
+      ) { setNeighborhoodPanelOpen(false); setNeighborhoodSearch('') }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [neighborhoodPanelOpen])
+
   const handleRectComplete = useCallback((bounds: LatLngBounds) => {
     if (!rawGeojson) return
     const ids = new Set<string>(
@@ -710,7 +752,7 @@ export default function ParkingVotePage() {
         .filter((f: any) => { const [lon, lat] = f.geometry.coordinates[0][0]; return bounds.contains([lat, lon]) })
         .map((f: any) => f.properties.id)
     )
-    setSelectedIds(ids); setSelectedId(null); setDrawModeSync('none')
+    setSelectedIds(ids); setSelectedId(null); setDrawModeSync('none'); setActiveNeighborhood(null)
   }, [rawGeojson])
 
   const handleCircleComplete = useCallback((center: LatLng, radiusM: number) => {
@@ -720,7 +762,7 @@ export default function ParkingVotePage() {
         .filter((f: any) => { const [lon, lat] = f.geometry.coordinates[0][0]; return haversine(center.lat, center.lng, lat, lon) <= radiusM })
         .map((f: any) => f.properties.id)
     )
-    setSelectedIds(ids); setSelectedId(null); setDrawModeSync('none')
+    setSelectedIds(ids); setSelectedId(null); setDrawModeSync('none'); setActiveNeighborhood(null)
   }, [rawGeojson])
 
   const paintCandidates = useMemo<{ id: string; lat: number; lon: number }[]>(() =>
@@ -739,6 +781,7 @@ export default function ParkingVotePage() {
   const handlePaintComplete = useCallback((allIds: string[]) => {
     if (allIds.length === 0) return
     setSelectedId(null)
+    setActiveNeighborhood(null)
     setSelectedIds(prev => {
       const next = new Set(prev)
       allIds.forEach(id => next.add(id))
@@ -748,6 +791,7 @@ export default function ParkingVotePage() {
 
   const handlePolygonComplete = useCallback((verts: LatLng[]) => {
     setSelectedId(null)
+    setActiveNeighborhood(null)
     setDrawModeSync('none')
     if (verts.length < 3) return  // cancelled via Escape
     const ids = new Set<string>(
@@ -757,6 +801,23 @@ export default function ParkingVotePage() {
     )
     setSelectedIds(ids)
   }, [paintCandidates]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleNeighborhoodSelect = useCallback((feature: NeighborhoodFeature) => {
+    setNeighborhoodPanelOpen(false)
+    const { geometry } = feature
+    const rings: number[][][] = geometry.type === 'Polygon'
+      ? [geometry.coordinates[0]]
+      : geometry.coordinates.map(poly => poly[0])
+    const ringVertexSets = rings.map(ring => ring.map(([lng, lat]) => ({ lat, lng })))
+    const ids = new Set<string>(
+      paintCandidates
+        .filter(c => ringVertexSets.some(verts => pointInPolygon(c.lat, c.lon, verts as LatLng[])))
+        .map(c => c.id)
+    )
+    setSelectedId(null)
+    setSelectedIds(ids)
+    setActiveNeighborhood(feature)
+  }, [paintCandidates])
 
   const handleSelectId = useCallback((id: string) => {
     if (drawModeRef.current !== 'none') return
@@ -1076,8 +1137,69 @@ export default function ParkingVotePage() {
                 />
               </label>
             )}
+            {/* Neighborhood quick-select */}
+            <div className="relative shrink-0">
+              <button
+                ref={neighborhoodBtnRef}
+                onClick={() => { setNeighborhoodPanelOpen(prev => !prev); setNeighborhoodSearch('') }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border shrink-0 ${
+                  neighborhoodPanelOpen
+                    ? 'bg-teal-100 text-teal-700 border-teal-300'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-transparent'
+                }`}
+              >
+                <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M8 1.5C5.515 1.5 3.5 3.515 3.5 6c0 3.75 4.5 8.5 4.5 8.5s4.5-4.75 4.5-8.5C12.5 3.515 10.485 1.5 8 1.5z" />
+                  <circle cx="8" cy="6" r="1.5" fill="currentColor" stroke="none" />
+                </svg>
+                Neighborhood ▾
+              </button>
+
+              {neighborhoodPanelOpen && (
+                <div
+                  ref={neighborhoodPanelRef}
+                  className="absolute top-full left-0 mt-1 z-[500] bg-white border border-gray-200 rounded-xl shadow-lg p-3 w-96"
+                >
+                  <input
+                    type="text"
+                    placeholder="Search neighborhoods…"
+                    value={neighborhoodSearch}
+                    onChange={e => setNeighborhoodSearch(e.target.value)}
+                    autoFocus
+                    className="w-full mb-2 px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400"
+                  />
+                  {neighborhoods.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-2">No neighborhoods loaded</p>
+                  ) : (() => {
+                    const filtered = neighborhoodSearch.trim()
+                      ? neighborhoods.filter(f => f.properties.name.toLowerCase().includes(neighborhoodSearch.toLowerCase()))
+                      : neighborhoods
+                    return filtered.length === 0 ? (
+                      <p className="text-xs text-gray-400 text-center py-2">No matches</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5 max-h-52 overflow-y-auto">
+                        {filtered.map(feature => (
+                          <button
+                            key={feature.properties.name}
+                            onClick={() => handleNeighborhoodSelect(feature)}
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
+                              activeNeighborhood?.properties.name === feature.properties.name
+                                ? 'bg-teal-100 text-teal-700 border-teal-300'
+                                : 'bg-gray-100 text-gray-700 hover:bg-teal-100 hover:text-teal-700 border-transparent hover:border-teal-300'
+                            }`}
+                          >
+                            {feature.properties.name}
+                          </button>
+                        ))}
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+            </div>
+
             {selectedIds.size > 0 && (
-              <button onClick={() => setSelectedIds(new Set())} className="ml-1 text-xs text-gray-400 hover:text-gray-600 shrink-0">
+              <button onClick={() => { setSelectedIds(new Set()); setActiveNeighborhood(null) }} className="ml-1 text-xs text-gray-400 hover:text-gray-600 shrink-0">
                 Clear selection
               </button>
             )}
@@ -1138,6 +1260,21 @@ export default function ParkingVotePage() {
               onSelectId={handleSelectId}
               layerMapRef={paintLayerMapRef}
               onReady={() => setLoading(false)}
+            />
+          )}
+
+          {activeNeighborhood && (
+            <Polygon
+              positions={
+                activeNeighborhood.geometry.type === 'MultiPolygon'
+                  ? activeNeighborhood.geometry.coordinates.map(poly =>
+                      poly.map(ring => ring.map(([lon, lat]) => [lat, lon] as [number, number]))
+                    )
+                  : [activeNeighborhood.geometry.coordinates.map(ring =>
+                      ring.map(([lon, lat]) => [lat, lon] as [number, number])
+                    )]
+              }
+              pathOptions={{ color: '#f97316', weight: 2.5, fillColor: '#f97316', fillOpacity: 0.12, dashArray: '6 4' }}
             />
           )}
 
