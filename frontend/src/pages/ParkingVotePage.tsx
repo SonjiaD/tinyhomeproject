@@ -18,11 +18,11 @@ type DrawMode = 'none' | 'rectangle' | 'circle'
 
 // ── Milestone config ──────────────────────────────────────────────────────────
 const MILESTONES = [
-  { key: 'first', pct: 0, label: 'Your first spot!', sub: 'Keep going — every vote counts.' },
-  { key: '10',    pct: 10, label: "10% — you're on your way!", sub: 'A solid start. The map is taking shape.' },
+  { key: 'first', pct: 0, label: 'Your first spot!', sub: 'Keep going. Every vote counts.' },
+  { key: '10',    pct: 10, label: "10%! You're on your way.", sub: 'A solid start. The map is taking shape.' },
   { key: '25',    pct: 25, label: "Quarter of the way there!", sub: "You've committed to real change." },
   { key: '50',    pct: 50, label: "Halfway! You're making history.", sub: null }, // uses card overlay
-  { key: '75',    pct: 75, label: "Almost there — the finish line is in sight.", sub: null },
+  { key: '75',    pct: 75, label: "Almost there. The finish line is in sight.", sub: null },
 ]
 
 const GOAL_COPY: Record<number, { heading: string; impact: string }> = {

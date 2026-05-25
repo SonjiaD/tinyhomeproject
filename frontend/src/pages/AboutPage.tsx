@@ -14,11 +14,11 @@ export default function AboutPage() {
         <section>
           <h2 className="text-xl font-semibold text-gray-800 mb-3">The Problem</h2>
           <p className="text-gray-600 leading-relaxed">
-            Oakland faces a significant housing crisis, with thousands of residents experiencing
-            homelessness. Tiny home villages have emerged as a practical, dignified interim housing
-            solution, but identifying the right sites requires balancing many competing factors:
-            proximity to transit, access to services, infrastructure capacity, and alignment with
-            urban planning goals.
+            California requires Oakland to permit 26,251 new housing units by 2031. So far, roughly
+            3,614 have been approved, a gap of more than 22,000 homes. Meanwhile, Oakland has tens
+            of thousands of on-street parking spaces sitting mostly idle. Tiny Home Parklets convert
+            individual parking spots into full, market-rate residential units: factory-built, 200 sq ft,
+            installed in 6–10 weeks for around $100,000 each, on land the city already controls.
           </p>
         </section>
 
@@ -74,28 +74,48 @@ export default function AboutPage() {
         <section>
           <h2 className="text-xl font-semibold text-gray-800 mb-3">Data Sources</h2>
           <p className="text-gray-600 leading-relaxed mb-3">
-            All site data is derived from publicly available Oakland and regional datasets, including:
+            The parking inventory is built from six primary datasets from the City of Oakland Open
+            Data portal, supplemented by crowdsourced and scraped sources:
           </p>
+          <ul className="space-y-2 text-sm text-gray-600 mb-4">
+            <li className="flex items-start gap-2">
+              <span className="text-primary-500 mt-0.5 shrink-0">&ndash;</span>
+              Residential Parking Permit Zones — polygon zones for blocks requiring residential permits
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary-500 mt-0.5 shrink-0">&ndash;</span>
+              On-Street Parking Inventory — curb segments with regulations (meters, time limits)
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary-500 mt-0.5 shrink-0">&ndash;</span>
+              Off-Street Parking Facilities — public pay and permit garages and lots
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary-500 mt-0.5 shrink-0">&ndash;</span>
+              Parking Meters — all city-managed IPS parking meters
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary-500 mt-0.5 shrink-0">&ndash;</span>
+              Jack London On-Street Parking — curb availability for the Jack London district
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary-500 mt-0.5 shrink-0">&ndash;</span>
+              International Blvd BRT Parking — curb inventory near the International Blvd corridor
+            </li>
+          </ul>
+          <p className="text-gray-600 leading-relaxed mb-3">Supplemental sources:</p>
           <ul className="space-y-2 text-sm text-gray-600">
             <li className="flex items-start gap-2">
               <span className="text-primary-500 mt-0.5 shrink-0">&ndash;</span>
-              Transit access data (AC Transit and BART stop proximity)
+              SpotAngels — scraped real-time parking rules to identify overnight-free and holiday parking
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-500 mt-0.5 shrink-0">&ndash;</span>
-              Affordable and assisted housing locations
+              OpenStreetMap via Overpass Turbo — East Oakland parking lanes and streetside parking nodes
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-500 mt-0.5 shrink-0">&ndash;</span>
-              Water infrastructure, fountains, and sewer collection networks
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary-500 mt-0.5 shrink-0">&ndash;</span>
-              Oakland General Plan priority areas
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary-500 mt-0.5 shrink-0">&ndash;</span>
-              Wildfire risk zones and Oakland streams data
+              SpotHero — supplemental parking inventory
             </li>
           </ul>
         </section>
@@ -103,18 +123,18 @@ export default function AboutPage() {
         <section>
           <h2 className="text-xl font-semibold text-gray-800 mb-3">The Team</h2>
           <p className="text-gray-600 leading-relaxed">
-            This tool was developed by the Kalyan Lab at the University of British Columbia (UBC),
-            focusing on urban analytics, GIS, and equitable urban planning. Our goal is to make
-            complex spatial decision-making accessible to community members and planners alike.
+            This tool was developed by the Kalyan Lab at the University of British Columbia (UBC)
+            in 2026, focusing on urban analytics, GIS, and equitable urban planning. Our goal is
+            to make complex spatial decision-making accessible to community members and planners alike.
           </p>
         </section>
 
         <section>
           <h2 className="text-xl font-semibold text-gray-800 mb-3">Get Involved</h2>
           <p className="text-gray-600 leading-relaxed">
-            We welcome feedback from community members, urban planners, and researchers. Your
-            submissions through the AHP and Linear Weighting tools directly contribute to our
-            research on participatory site selection methods.
+            Vote on the map to show which parking spots you'd support converting to tiny homes.
+            Share the tool with neighbors and community members. The more Oaklanders who weigh in,
+            the stronger the case for making this a reality.
           </p>
         </section>
 

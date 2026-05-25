@@ -148,14 +148,8 @@ const faqItems: FAQItem[] = [
     ),
   },
   {
-    question: 'How did you get to 45,332 parking spaces?',
-    answer: (
-      <p>
-        Each rectangle represents one 30 ft × 10 ft tiny home parking spot, oriented parallel to
-        its street. Spots are packed along every eligible block with a 20 ft clearance at each end
-        (California Daylighting Law, AB 413).
-      </p>
-    ),
+    question: 'How did you get to __COUNT__ parking spaces?',
+    answer: '__PARKING_ANSWER__',
   },
   {
     question: 'Is this even legal?',
@@ -205,11 +199,26 @@ function FAQItem({ question, answer }: FAQItem) {
 
 export function FAQSection() {
   const parkingCount = useParkingCount()
-  const items = faqItems.map(item =>
-    item.question.includes('45,332')
-      ? { ...item, question: item.question.replace('45,332', parkingCount ? parkingCount.toLocaleString() : '45,332') }
-      : item
-  )
+  const displayCount = parkingCount ? parkingCount.toLocaleString() : '45,332'
+
+  const items = faqItems.map(item => {
+    if (!item.question.includes('__COUNT__')) return item
+    return {
+      question: item.question.replace('__COUNT__', displayCount),
+      answer: (
+        <p>
+          Each rectangle represents one 30 ft × 10 ft tiny home parking spot, oriented parallel
+          to its street. Spots are packed along every eligible block with a 20 ft clearance at
+          each end (California Daylighting Law, AB 413). The {displayCount} total comes from six
+          City of Oakland Open Data layers (on-street inventory, permit zones, parking meters,
+          Jack London and International Blvd curb inventories, and off-street facilities),
+          supplemented by SpotAngels, OpenStreetMap, and SpotHero data, then filtered to remove
+          spots more than 10,000 meters from essential services.
+        </p>
+      ),
+    }
+  })
+
   return (
     <section>
       <h2 className="text-xl font-semibold text-gray-800 mb-4">Frequently Asked Questions</h2>
