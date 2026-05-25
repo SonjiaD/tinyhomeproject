@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 
 export default function LoginPage() {
   const { signIn } = useAuth()
@@ -19,7 +20,8 @@ export default function LoginPage() {
     if (error) {
       setError('Invalid email or password. Please try again.')
     } else {
-      navigate('/parking-vote')
+      const { data: { user } } = await supabase.auth.getUser()
+      navigate(user?.user_metadata?.goal ? '/parking-vote' : '/onboarding/goal')
     }
   }
 

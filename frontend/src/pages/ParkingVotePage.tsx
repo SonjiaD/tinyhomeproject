@@ -1102,42 +1102,8 @@ export default function ParkingVotePage() {
 
             {/* LEFT: selection tools */}
             <span className="text-sm font-semibold text-gray-700 shrink-0 mr-1">Select:</span>
-            {(['rectangle', 'circle', 'polygon', 'paint'] as DrawMode[]).map(mode => (
-              <button
-                key={mode}
-                onClick={() => setDrawModeSync(drawMode === mode ? 'none' : mode as DrawMode)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize border shrink-0 ${
-                  drawMode === mode
-                    ? 'bg-orange-100 text-orange-700 border-orange-300'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-transparent'
-                }`}
-              >
-                {mode === 'rectangle'
-                  ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="4" width="12" height="8" rx="1" /></svg>
-                  : mode === 'circle'
-                  ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="5" /></svg>
-                  : mode === 'polygon'
-                  ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="8,1.5 14.5,5.5 12,13.5 4,13.5 1.5,5.5" strokeLinejoin="round" /></svg>
-                  : <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 1.5l2 2-8.5 8.5-3 .5.5-3 9-8z" strokeLinejoin="round" strokeLinecap="round" /><path d="M2.5 13.5a1 1 0 101.5-1.3" strokeLinecap="round" /></svg>
-                }
-                {mode}
-              </button>
-            ))}
 
-            {drawMode === 'paint' && (
-              <label className="flex items-center gap-2 text-xs text-gray-600 ml-1 shrink-0">
-                <span className="shrink-0">Brush: {brushRadius}m</span>
-                <input
-                  type="range"
-                  min={10}
-                  max={100}
-                  value={brushRadius}
-                  onChange={e => setBrushRadius(Number(e.target.value))}
-                  className="w-20 accent-orange-500"
-                />
-              </label>
-            )}
-            {/* Neighborhood quick-select */}
+            {/* Neighborhood quick-select — first in list */}
             <div className="relative shrink-0">
               <button
                 ref={neighborhoodBtnRef}
@@ -1198,6 +1164,41 @@ export default function ParkingVotePage() {
               )}
             </div>
 
+            {(['rectangle', 'circle', 'polygon', 'paint'] as DrawMode[]).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setDrawModeSync(drawMode === mode ? 'none' : mode as DrawMode)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize border shrink-0 ${
+                  drawMode === mode
+                    ? 'bg-orange-100 text-orange-700 border-orange-300'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-transparent'
+                }`}
+              >
+                {mode === 'rectangle'
+                  ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="4" width="12" height="8" rx="1" /></svg>
+                  : mode === 'circle'
+                  ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="5" /></svg>
+                  : mode === 'polygon'
+                  ? <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="8,1.5 14.5,5.5 12,13.5 4,13.5 1.5,5.5" strokeLinejoin="round" /></svg>
+                  : <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 1.5l2 2-8.5 8.5-3 .5.5-3 9-8z" strokeLinejoin="round" strokeLinecap="round" /><path d="M2.5 13.5a1 1 0 101.5-1.3" strokeLinecap="round" /></svg>
+                }
+                {mode}
+              </button>
+            ))}
+
+            {drawMode === 'paint' && (
+              <label className="flex items-center gap-2 text-xs text-gray-600 ml-1 shrink-0">
+                <span className="shrink-0">Brush: {brushRadius}m</span>
+                <input
+                  type="range"
+                  min={10}
+                  max={100}
+                  value={brushRadius}
+                  onChange={e => setBrushRadius(Number(e.target.value))}
+                  className="w-20 accent-orange-500"
+                />
+              </label>
+            )}
             {selectedIds.size > 0 && (
               <button onClick={() => { setSelectedIds(new Set()); setActiveNeighborhood(null) }} className="ml-1 text-xs text-gray-400 hover:text-gray-600 shrink-0">
                 Clear selection
@@ -1205,9 +1206,11 @@ export default function ParkingVotePage() {
             )}
 
             {/* Active tool description — only shows when a tool is clicked */}
-            {drawMode !== 'none' && (
+            {(drawMode !== 'none' || neighborhoodPanelOpen || activeNeighborhood) && (
               <span className="ml-2 text-xs font-medium text-orange-600 whitespace-nowrap overflow-hidden">
-                {DESCRIPTIONS[drawMode]}
+                {drawMode !== 'none'
+                  ? DESCRIPTIONS[drawMode]
+                  : 'Click a neighborhood to instantly select all parking spots inside it.'}
               </span>
             )}
 
