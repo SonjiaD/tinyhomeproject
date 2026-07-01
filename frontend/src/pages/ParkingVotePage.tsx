@@ -599,7 +599,6 @@ export default function ParkingVotePage() {
   // ── Progress / milestones / celebrations ─────────────────────────────────
   const userGoal: number = (user?.user_metadata?.goal as number) ?? 6000
   const [communityTotal, setCommunityTotal] = useState<number | null>(null)
-  const [headerExpanded, setHeaderExpanded] = useState(false)
   const [toast, setToast] = useState<{ label: string; sub?: string | null } | null>(null)
   const [halfwayCard, setHalfwayCard] = useState(false)
   const [celebModal, setCelebModal] = useState(false)
@@ -607,6 +606,7 @@ export default function ParkingVotePage() {
 
   const yesCount = Object.values(userVotes).filter(Boolean).length
   const progressPct = Math.min(100, Math.round((yesCount / userGoal) * 100))
+  const totalParkingCount = rawGeojson?.total_spots ?? parkingCount
 
   function showToast(label: string, sub?: string | null) {
     if (toastTimer.current) clearTimeout(toastTimer.current)
@@ -988,37 +988,52 @@ export default function ParkingVotePage() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
 
-      {/* ── Progress header ─────────────────────────────────────────────── */}
+      {/* ── Progress header — always-visible expanded panel, no collapse/minimize ── */}
       <div className="bg-primary-900 shrink-0 border-b border-primary-800">
-
-        {/* Collapsed bar — always visible */}
-        <div className="w-full px-5 py-2.5 flex items-center gap-3">
-          <button
-            onClick={() => setHeaderExpanded(prev => !prev)}
-            className="flex items-center gap-3 flex-1 min-w-0 focus:outline-none"
-          >
-            {/* YOUR PROGRESS label + numbers + mini bar + pct */}
-            <span className="text-teal-400 text-xs font-semibold uppercase tracking-widest shrink-0">Your Progress</span>
-            <span className="text-white text-xs font-bold shrink-0">{yesCount.toLocaleString()} / {userGoal.toLocaleString()}</span>
-            <div className="relative w-16 h-1.5 bg-white/10 rounded-full shrink-0 overflow-hidden">
-              <div className="h-full bg-teal-400 rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
+        <div className="px-5 pt-3 pb-4 flex gap-0">
+          {/* Your Progress */}
+          <div className="flex-1 pr-5">
+            <p className="text-xs text-teal-400 font-semibold uppercase tracking-widest mb-1">Your Progress</p>
+            <p className="flex items-baseline gap-1.5">
+              <span className="text-white font-bold text-xl leading-none">{yesCount.toLocaleString()}</span>
+              <span className="text-teal-300/70 text-xs">of {userGoal.toLocaleString()} spots goal</span>
+            </p>
+            <div className="mt-2 flex items-center gap-2.5">
+              <div className="relative flex-1 h-2 bg-white/10 rounded-full overflow-visible">
+                <div
+                  className="h-2 bg-teal-400 rounded-full transition-all duration-500"
+                  style={{ width: `${progressPct}%` }}
+                />
+                {[10, 25, 50, 75].map(pct => (
+                  <div key={pct} className="absolute top-0 w-0.5 h-2 bg-white/30" style={{ left: `${pct}%` }} />
+                ))}
+              </div>
+              <span className="text-teal-400 text-xs font-semibold shrink-0">{progressPct}% complete</span>
             </div>
-            <span className="text-teal-400 text-xs font-semibold shrink-0">{progressPct}%</span>
+          </div>
 
-            {/* Divider */}
-            <span className="text-white/15 text-sm shrink-0">|</span>
+          {/* Vertical divider */}
+          <div className="w-px bg-white/10 mt-3 self-stretch" />
 
-            {/* COMMUNITY label + number */}
-            {communityTotal !== null && (
-              <>
-                <span className="text-teal-400 text-xs font-semibold uppercase tracking-widest shrink-0">Community</span>
-                <span className="text-white text-xs font-bold shrink-0">{communityTotal.toLocaleString()} spots supported</span>
-              </>
-            )}
-          </button>
+          {/* Community */}
+          {communityTotal !== null && (
+            <div className="flex-1 pl-5">
+              <p className="text-xs text-teal-400 font-semibold uppercase tracking-widest mb-1">Community</p>
+              <p className="flex items-baseline gap-1.5">
+                <span className="text-white font-bold text-xl leading-none">{communityTotal.toLocaleString()}</span>
+                <span className="text-teal-300/70 text-xs">yes votes across Oakland</span>
+              </p>
+              <p className="text-teal-300/70 text-xs mt-1">
+                {totalParkingCount != null && (
+                  <>≈{Math.round((communityTotal / totalParkingCount) * 100)}% of Oakland's on-street parking · </>
+                )}
+                <span className="text-teal-300/50">{formatTax(communityTotal)} projected annual tax</span>
+              </p>
+            </div>
+          )}
 
           {/* Share trigger — always available, not just at 100% */}
-          <div className="relative shrink-0">
+          <div className="relative shrink-0 self-start">
             <button
               ref={shareBtnRef}
               onClick={() => setSharePanelOpen(prev => !prev)}
@@ -1045,50 +1060,7 @@ export default function ParkingVotePage() {
               </div>
             )}
           </div>
-
-          {/* Chevron toggle */}
-          <button
-            onClick={() => setHeaderExpanded(prev => !prev)}
-            className="shrink-0 text-teal-400/50 text-xs focus:outline-none"
-          >
-            {headerExpanded ? '▲' : '▼'}
-          </button>
         </div>
-
-        {/* Expanded panel */}
-        {headerExpanded && (
-          <div className="px-5 pb-4 flex gap-0 border-t border-white/5">
-            {/* Your Progress */}
-            <div className="flex-1 pt-3 pr-5">
-              <p className="text-xs text-teal-400 font-semibold uppercase tracking-widest mb-1">Your Progress</p>
-              <p className="text-white font-bold text-xl leading-none">{yesCount.toLocaleString()}</p>
-              <p className="text-teal-300/70 text-xs mt-0.5">of {userGoal.toLocaleString()} spots goal</p>
-              <div className="mt-2.5 relative w-full h-2 bg-white/10 rounded-full overflow-visible">
-                <div
-                  className="h-2 bg-teal-400 rounded-full transition-all duration-500"
-                  style={{ width: `${progressPct}%` }}
-                />
-                {[10, 25, 50, 75].map(pct => (
-                  <div key={pct} className="absolute top-0 w-0.5 h-2 bg-white/30" style={{ left: `${pct}%` }} />
-                ))}
-              </div>
-              <p className="text-teal-400 text-xs font-semibold mt-1">{progressPct}% complete</p>
-            </div>
-
-            {/* Vertical divider */}
-            <div className="w-px bg-white/10 mt-3 self-stretch" />
-
-            {/* Community */}
-            {communityTotal !== null && (
-              <div className="flex-1 pt-3 pl-5">
-                <p className="text-xs text-teal-400 font-semibold uppercase tracking-widest mb-1">Community</p>
-                <p className="text-white font-bold text-xl leading-none">{communityTotal.toLocaleString()}</p>
-                <p className="text-teal-300/70 text-xs mt-0.5">spots supported across Oakland</p>
-                <p className="text-teal-300/50 text-xs mt-1">yes votes only · {formatTax(communityTotal)} projected annual tax</p>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ── Batch save progress ─────────────────────────────────────────── */}
