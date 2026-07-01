@@ -7,7 +7,9 @@ import type { VoteSite, VoteTally, VoteCountsMap } from '../lib/types'
 import { useParkingCount } from '../lib/useParkingCount'
 import { computeAllBounds, type DistanceBounds } from '../lib/normalization'
 import { getVoteColor } from '../lib/voteColors'
+import { Share2 } from 'lucide-react'
 import { SitePanel } from '../components/SitePanel'
+import { ShareButtons } from '../components/ShareButtons'
 import { ProgressToast } from '../components/ui'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -35,10 +37,10 @@ const MILESTONES = [
   { key: '75',    pct: 75, label: "Almost there. The finish line is in sight.", sub: null },
 ]
 
-const GOAL_COPY: Record<number, { heading: string; impact: string }> = {
-  6000:  { heading: "You've proved the concept.", impact: "You've pledged 6,000 new homes for Oakland." },
-  18000: { heading: "You've closed the housing gap.", impact: "You've pledged 18,000 new homes for Oakland." },
-  30000: { heading: "You've ended the affordability crisis.", impact: "You've pledged 30,000 new homes for Oakland." },
+const GOAL_COPY: Record<number, { heading: string; impact: string; shareText: string }> = {
+  6000:  { heading: "You've proved the concept.", impact: "You've pledged 6,000 new homes for Oakland.", shareText: "I've pledged 6,000 new homes for Oakland." },
+  18000: { heading: "You've closed the housing gap.", impact: "You've pledged 18,000 new homes for Oakland.", shareText: "I've pledged 18,000 new homes for Oakland." },
+  30000: { heading: "You've ended the affordability crisis.", impact: "You've pledged 30,000 new homes for Oakland.", shareText: "I've pledged 30,000 new homes for Oakland." },
 }
 
 function fireBurst(intensity: 'small' | 'medium' | 'center') {
@@ -573,6 +575,11 @@ export default function ParkingVotePage() {
   // ── City boundary outline ──────────────────────────────────────────────────
   const [cityBoundary, setCityBoundary] = useState<NeighborhoodGeometry | null>(null)
 
+  // ── Persistent share dropdown ───────────────────────────────────────────────
+  const [sharePanelOpen, setSharePanelOpen] = useState(false)
+  const shareBtnRef = useRef<HTMLButtonElement>(null)
+  const sharePanelRef = useRef<HTMLDivElement>(null)
+
   // ── Neighborhood quick-select ─────────────────────────────────────────────
   const [neighborhoods, setNeighborhoods] = useState<NeighborhoodFeature[]>([])
   const [neighborhoodPanelOpen, setNeighborhoodPanelOpen] = useState(false)
@@ -754,6 +761,18 @@ export default function ParkingVotePage() {
     document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [neighborhoodPanelOpen])
+
+  useEffect(() => {
+    if (!sharePanelOpen) return
+    function handleOutside(e: MouseEvent) {
+      if (
+        sharePanelRef.current && !sharePanelRef.current.contains(e.target as Node) &&
+        shareBtnRef.current && !shareBtnRef.current.contains(e.target as Node)
+      ) { setSharePanelOpen(false) }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [sharePanelOpen])
 
   const handleRectComplete = useCallback((bounds: LatLngBounds) => {
     if (!rawGeojson) return
@@ -973,34 +992,68 @@ export default function ParkingVotePage() {
       <div className="bg-primary-900 shrink-0 border-b border-primary-800">
 
         {/* Collapsed bar — always visible */}
-        <button
-          onClick={() => setHeaderExpanded(prev => !prev)}
-          className="w-full px-5 py-2.5 flex items-center gap-3 focus:outline-none"
-        >
-          {/* YOUR PROGRESS label + numbers + mini bar + pct */}
-          <span className="text-teal-400 text-xs font-semibold uppercase tracking-widest shrink-0">Your Progress</span>
-          <span className="text-white text-xs font-bold shrink-0">{yesCount.toLocaleString()} / {userGoal.toLocaleString()}</span>
-          <div className="relative w-16 h-1.5 bg-white/10 rounded-full shrink-0 overflow-hidden">
-            <div className="h-full bg-teal-400 rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
+        <div className="w-full px-5 py-2.5 flex items-center gap-3">
+          <button
+            onClick={() => setHeaderExpanded(prev => !prev)}
+            className="flex items-center gap-3 flex-1 min-w-0 focus:outline-none"
+          >
+            {/* YOUR PROGRESS label + numbers + mini bar + pct */}
+            <span className="text-teal-400 text-xs font-semibold uppercase tracking-widest shrink-0">Your Progress</span>
+            <span className="text-white text-xs font-bold shrink-0">{yesCount.toLocaleString()} / {userGoal.toLocaleString()}</span>
+            <div className="relative w-16 h-1.5 bg-white/10 rounded-full shrink-0 overflow-hidden">
+              <div className="h-full bg-teal-400 rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
+            </div>
+            <span className="text-teal-400 text-xs font-semibold shrink-0">{progressPct}%</span>
+
+            {/* Divider */}
+            <span className="text-white/15 text-sm shrink-0">|</span>
+
+            {/* COMMUNITY label + number */}
+            {communityTotal !== null && (
+              <>
+                <span className="text-teal-400 text-xs font-semibold uppercase tracking-widest shrink-0">Community</span>
+                <span className="text-white text-xs font-bold shrink-0">{communityTotal.toLocaleString()} spots supported</span>
+              </>
+            )}
+          </button>
+
+          {/* Share trigger — always available, not just at 100% */}
+          <div className="relative shrink-0">
+            <button
+              ref={shareBtnRef}
+              onClick={() => setSharePanelOpen(prev => !prev)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                sharePanelOpen ? 'bg-teal-800 text-teal-200' : 'text-teal-400/70 hover:text-teal-300 hover:bg-white/5'
+              }`}
+            >
+              <Share2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+              Share
+            </button>
+            {sharePanelOpen && (
+              <div
+                ref={sharePanelRef}
+                className="absolute top-full right-0 mt-2 z-[500] bg-primary-900 border border-primary-700 rounded-xl shadow-lg p-3 w-80"
+              >
+                <ShareButtons
+                  url={`${window.location.origin}/`}
+                  text="Help Oakland solve its housing crisis."
+                  onCopyLink={() => {
+                    showToast('Link copied!', 'Share it with friends.')
+                    setSharePanelOpen(false)
+                  }}
+                />
+              </div>
+            )}
           </div>
-          <span className="text-teal-400 text-xs font-semibold shrink-0">{progressPct}%</span>
 
-          {/* Divider */}
-          <span className="text-white/15 text-sm shrink-0">|</span>
-
-          {/* COMMUNITY label + number */}
-          {communityTotal !== null && (
-            <>
-              <span className="text-teal-400 text-xs font-semibold uppercase tracking-widest shrink-0">Community</span>
-              <span className="text-white text-xs font-bold shrink-0">{communityTotal.toLocaleString()} spots supported</span>
-            </>
-          )}
-
-          {/* Spacer + chevron */}
-          <span className="ml-auto text-teal-400/50 text-xs shrink-0">
+          {/* Chevron toggle */}
+          <button
+            onClick={() => setHeaderExpanded(prev => !prev)}
+            className="shrink-0 text-teal-400/50 text-xs focus:outline-none"
+          >
             {headerExpanded ? '▲' : '▼'}
-          </span>
-        </button>
+          </button>
+        </div>
 
         {/* Expanded panel */}
         {headerExpanded && (
@@ -1074,27 +1127,18 @@ export default function ParkingVotePage() {
             <p className="text-4xl mb-4">🏠</p>
             <h2 className="text-white font-bold text-2xl mb-2">{goalCopy.heading}</h2>
             <p className="text-teal-300 text-base mb-6">{goalCopy.impact}</p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => {
-                  if (navigator.share) {
-                    navigator.share({ title: 'I helped solve Oakland\'s housing crisis', url: window.location.href })
-                  } else {
-                    navigator.clipboard.writeText(window.location.href)
-                    showToast('Link copied!', 'Share it with friends.')
-                  }
-                }}
-                className="bg-teal-500 hover:bg-teal-400 text-white font-bold py-3 rounded-full transition-all"
-              >
-                Share my map ↗
-              </button>
-              <button
-                onClick={() => setCelebModal(false)}
-                className="text-teal-300/60 hover:text-teal-300 text-sm transition-colors"
-              >
-                Keep going →
-              </button>
-            </div>
+            <ShareButtons
+              url={`${window.location.origin}/`}
+              text={goalCopy.shareText}
+              onCopyLink={() => showToast('Link copied!', 'Share it with friends.')}
+              className="mb-4"
+            />
+            <button
+              onClick={() => setCelebModal(false)}
+              className="text-teal-300/60 hover:text-teal-300 text-sm transition-colors"
+            >
+              Keep going →
+            </button>
           </div>
         </div>
       )}
