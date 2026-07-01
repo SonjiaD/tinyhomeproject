@@ -128,14 +128,14 @@ function ParkingLayer({
     const isSel = id === selectedId || selectedIds.has(id)
     const myVote = userVotes[id]
     const tally = voteCounts[id]
-    let fillColor = '#3d8888'
+    let fillColor = '#64748b'
     if      (myVote === true)           fillColor = '#16a34a'
     else if (myVote === false)          fillColor = '#dc2626'
     else if (tally && tally.total > 0) fillColor = getVoteColor(tally)
     if (isSel) fillColor = '#f97316'
     return {
       renderer: canvasRenderer.current,
-      color: isSel ? '#ea580c' : myVote === true ? '#15803d' : myVote === false ? '#b91c1c' : '#1a3a3a',
+      color: isSel ? '#ea580c' : myVote === true ? '#15803d' : myVote === false ? '#b91c1c' : '#334155',
       weight: isSel ? 2 : myVote !== undefined ? 1.5 : 0.5,
       fillColor,
       fillOpacity: 0.82,
@@ -570,6 +570,9 @@ export default function ParkingVotePage() {
   const [brushRadius, setBrushRadius] = useState(30)
   const paintLayerMapRef = useRef<Map<string, L.Path>>(new Map())
 
+  // ── City boundary outline ──────────────────────────────────────────────────
+  const [cityBoundary, setCityBoundary] = useState<NeighborhoodGeometry | null>(null)
+
   // ── Neighborhood quick-select ─────────────────────────────────────────────
   const [neighborhoods, setNeighborhoods] = useState<NeighborhoodFeature[]>([])
   const [neighborhoodPanelOpen, setNeighborhoodPanelOpen] = useState(false)
@@ -730,6 +733,13 @@ export default function ParkingVotePage() {
           .sort((a: any, b: any) => (a.properties.name ?? '').localeCompare(b.properties.name ?? ''))
         setNeighborhoods(features)
       })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    fetch('/oakland_boundary.geojson')
+      .then(r => r.json())
+      .then(data => setCityBoundary(data.features?.[0]?.geometry ?? null))
       .catch(() => {})
   }, [])
 
@@ -1218,7 +1228,7 @@ export default function ParkingVotePage() {
             <div className="ml-auto flex items-center gap-4 shrink-0">
               <div className="flex items-center gap-3 text-xs text-gray-500">
                 <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#3d8888' }} /> Not voted
+                  <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#64748b' }} /> Not voted
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#16a34a' }} /> You supported
@@ -1263,6 +1273,21 @@ export default function ParkingVotePage() {
               onSelectId={handleSelectId}
               layerMapRef={paintLayerMapRef}
               onReady={() => setLoading(false)}
+            />
+          )}
+
+          {cityBoundary && (
+            <Polygon
+              positions={
+                cityBoundary.type === 'MultiPolygon'
+                  ? cityBoundary.coordinates.map(poly =>
+                      poly.map(ring => ring.map(([lon, lat]) => [lat, lon] as [number, number]))
+                    )
+                  : [cityBoundary.coordinates.map(ring =>
+                      ring.map(([lon, lat]) => [lat, lon] as [number, number])
+                    )]
+              }
+              pathOptions={{ color: '#0f2a2a', weight: 2, fillOpacity: 0, interactive: false }}
             />
           )}
 
