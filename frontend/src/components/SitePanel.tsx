@@ -125,6 +125,7 @@ export function SitePanel({ site, allBounds, voteTally, myVote, userId, onClose,
             <div>
               <p className="text-xs text-primary-100 uppercase tracking-wide font-medium mb-0.5">Proposed Site</p>
               <p className="text-sm font-semibold text-white leading-snug">{site.address || 'Unnamed site'}</p>
+              <p className="text-xs text-primary-200 mt-0.5">30 ft × 10 ft parking space</p>
             </div>
             <button
               onClick={onClose}

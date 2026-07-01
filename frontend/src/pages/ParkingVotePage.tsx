@@ -1338,6 +1338,7 @@ export default function ParkingVotePage() {
           )}
           <span className="text-white font-medium text-sm">
             {selectedIds.size.toLocaleString()} spaces selected
+            <span className="text-primary-300 font-normal"> · each ≈ 30 ft × 10 ft = 1 home</span>
           </span>
           <input
             value={batchComment}
