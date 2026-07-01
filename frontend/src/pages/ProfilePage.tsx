@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { Home, Key, Users, Megaphone, Circle } from 'lucide-react'
+import { Home, Key, History, Heart, Briefcase, MapPin, Circle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { Button, Card, SectionLabel, PageLayout } from '../components/ui'
+import { SectionLabel, PageLayout } from '../components/ui'
 
 const GOALS = [
   {
@@ -39,11 +39,13 @@ const GOALS = [
 ]
 
 const ROLES = [
-  { value: 'renter',    label: 'Renter',    Icon: Home },
-  { value: 'homeowner', label: 'Homeowner', Icon: Key },
-  { value: 'neighbor',  label: 'Neighbor',  Icon: Users },
-  { value: 'advocate',  label: 'Advocate',  Icon: Megaphone },
-  { value: 'other',     label: 'Other',     Icon: Circle },
+  { value: 'renter',        label: 'Renter',                     Icon: Home },
+  { value: 'homeowner',     label: 'Homeowner',                  Icon: Key },
+  { value: 'used_to_live',  label: 'Used to live there',         Icon: History },
+  { value: 'want_to_move',  label: 'Want to move there',         Icon: Heart },
+  { value: 'work_there',    label: 'Work there',                 Icon: Briefcase },
+  { value: 'oakland_fan',   label: 'Oakland fan / live nearby',  Icon: MapPin },
+  { value: 'other',         label: 'Other',                      Icon: Circle },
 ]
 
 const OWNERSHIP_OPTIONS = [
@@ -100,10 +102,18 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [loaded, setLoaded] = useState(false)
+  const skipNextSave = useRef(true)
+  const hasLoadedMeta = useRef(false)
 
+  // Only ever pull server metadata into local state once. `user` also changes after our
+  // own saves (Supabase fires a USER_UPDATED auth event), and re-applying it here would
+  // create new array/object references that look like edits, retriggering another save.
   useEffect(() => {
+    if (hasLoadedMeta.current) return
     const meta = user?.user_metadata
     if (!meta) return
+    hasLoadedMeta.current = true
     if (meta.goal) setGoal(meta.goal)
     if (meta.roles) setRoles(meta.roles)
     if (meta.neighborhood) {
@@ -112,7 +122,36 @@ export default function ProfilePage() {
     }
     if (meta.ownership_model) setOwnershipModel(meta.ownership_model)
     if (meta.ownership_other) setOwnershipOther(meta.ownership_other)
+    setLoaded(true)
   }, [user])
+
+  // Autosave: debounce so rapid multi-clicks (e.g. selecting several roles) collapse into one save.
+  useEffect(() => {
+    if (!loaded) return
+    if (skipNextSave.current) { skipNextSave.current = false; return }
+    if (!goal) return
+    setSaving(true)
+    setError('')
+    const timeout = setTimeout(async () => {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          goal,
+          roles,
+          neighborhood: neighborhood || null,
+          ownership_model: ownershipModel || null,
+          ownership_other: ownershipModel === 'other' ? ownershipOther || null : null,
+        },
+      })
+      setSaving(false)
+      if (error) {
+        setError('Could not save your profile. Please try again.')
+      } else {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      }
+    }, 700)
+    return () => clearTimeout(timeout)
+  }, [loaded, goal, roles, neighborhood, ownershipModel, ownershipOther])
 
   const filteredNeighborhoods = neighborhoodSearch.length > 0
     ? NEIGHBORHOODS.filter(n => n.toLowerCase().includes(neighborhoodSearch.toLowerCase()))
@@ -122,33 +161,32 @@ export default function ProfilePage() {
     setRoles(prev => prev.includes(value) ? prev.filter(r => r !== value) : [...prev, value])
   }
 
-  async function handleSave() {
-    if (!goal) return
-    setSaving(true)
-    setError('')
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        goal,
-        roles,
-        neighborhood: neighborhood || null,
-        ownership_model: ownershipModel || null,
-        ownership_other: ownershipModel === 'other' ? ownershipOther || null : null,
-      },
-    })
-    setSaving(false)
-    if (error) {
-      setError('Could not save your profile. Please try again.')
-    } else {
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
-    }
-  }
-
   return (
     <PageLayout>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <h1 className="text-3xl font-bold text-gray-900 mb-1">Your Profile</h1>
-        <p className="text-gray-500 mb-10">Update your goal and preferences any time.</p>
+        <div className="flex items-start justify-between gap-4 mb-10">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">Your Profile</h1>
+            <p className="text-gray-500">Update your goal and preferences any time.</p>
+          </div>
+          <div className="shrink-0 pt-1.5 text-sm font-medium">
+            {saving ? (
+              <span className="text-gray-400 flex items-center gap-1.5">
+                <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Saving…
+              </span>
+            ) : saved ? (
+              <span className="text-teal-600">✓ Saved</span>
+            ) : error ? (
+              <span className="text-red-600">{error}</span>
+            ) : !goal ? (
+              <span className="text-gray-400">Choose a goal below to enable saving</span>
+            ) : null}
+          </div>
+        </div>
 
         {/* Goal tier */}
         <section className="mb-10">
@@ -264,7 +302,7 @@ export default function ProfilePage() {
         {/* Neighborhood */}
         <section className="mb-10">
           <SectionLabel className="mb-1">Your Neighborhood</SectionLabel>
-          <p className="text-gray-400 text-sm mb-4">Which part of Oakland do you care about most?</p>
+          <p className="text-gray-400 text-sm mb-4">Which Oakland neighborhood do you most want to see this happen in?</p>
 
           {/* Always-visible selected badge */}
           {neighborhood && neighborhood !== 'not-oakland' && (
@@ -331,18 +369,6 @@ export default function ProfilePage() {
           </button>
         </section>
 
-        {error && (
-          <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-2 mb-4">{error}</p>
-        )}
-
-        <Button
-          onClick={handleSave}
-          disabled={!goal}
-          loading={saving}
-          size="lg"
-        >
-          {saved ? '✓ Saved' : 'Save Profile'}
-        </Button>
         <div className="h-16" />
       </motion.div>
     </PageLayout>

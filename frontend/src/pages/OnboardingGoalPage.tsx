@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Home, Key, Users, Megaphone, Circle } from 'lucide-react'
+import { Home, Key, History, Heart, Briefcase, MapPin, Circle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const GOALS = [
@@ -41,11 +41,13 @@ const GOALS = [
 ]
 
 const ROLES = [
-  { value: 'renter',    label: 'Renter',     Icon: Home },
-  { value: 'homeowner', label: 'Homeowner',  Icon: Key },
-  { value: 'neighbor',  label: 'Neighbor',   Icon: Users },
-  { value: 'advocate',  label: 'Advocate',   Icon: Megaphone },
-  { value: 'other',     label: 'Other',      Icon: Circle },
+  { value: 'renter',        label: 'Renter',                Icon: Home },
+  { value: 'homeowner',     label: 'Homeowner',              Icon: Key },
+  { value: 'used_to_live',  label: 'Used to live there',     Icon: History },
+  { value: 'want_to_move',  label: 'Want to move there',     Icon: Heart },
+  { value: 'work_there',    label: 'Work there',             Icon: Briefcase },
+  { value: 'oakland_fan',   label: 'Oakland fan / live nearby', Icon: MapPin },
+  { value: 'other',         label: 'Other',                  Icon: Circle },
 ]
 
 const OWNERSHIP_OPTIONS = [
@@ -250,10 +252,10 @@ export default function OnboardingGoalPage() {
       <div className="text-center mb-10">
         <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 2 of 4</p>
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
-          Which part of Oakland do you care about most?
+          Which Oakland neighborhood do you most want to see this happen in?
         </h1>
         <p className="text-teal-300 leading-relaxed">
-          This helps us understand where Oaklanders want change.
+          Tell us where you'd most like to see tiny home parklets — where you live, work, or see the biggest need.
         </p>
       </div>
 
@@ -345,7 +347,7 @@ export default function OnboardingGoalPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 + i * 0.07 }}
               onClick={() => toggleRole(r.value)}
-              className={`flex flex-col items-center gap-2.5 p-5 rounded-2xl border-2 text-sm font-medium transition-all duration-200 focus:outline-none ${
+              className={`flex flex-col items-center gap-2.5 p-5 rounded-2xl border-2 text-sm font-medium text-center leading-snug transition-all duration-200 focus:outline-none ${
                 isSelected
                   ? 'border-teal-400 bg-teal-400/20 text-teal-300 ring-2 ring-teal-400/30'
                   : 'border-white/10 bg-white/5 text-teal-200/70 hover:border-white/20 hover:bg-white/10'
