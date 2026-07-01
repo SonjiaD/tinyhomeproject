@@ -42,6 +42,14 @@ Generated parking spot rectangles — derived from `candidates/`, not collected 
 
 Each candidate point gets snapped to its nearest OSM street edge, then packed with 30 ft × 10 ft rectangles (one per physical parking space). These are what the map renders as colored boxes.
 
+Each spot carries 4 proximity fields: `transit_dist`, `city_facility_dist`,
+`water_infrastructure_dist`, `homeless_service_dist`. As of `compute_spot_distances.py`
+(see `features/` below), `transit_dist` and `city_facility_dist` are computed **per
+individual spot** — each spot's own exact location, not a value copied from its shared
+parent candidate/block. `water_infrastructure_dist` and `homeless_service_dist` still
+come from the block-level candidate (no OSM equivalent exists to recompute them more
+precisely).
+
 **Used by:** `backend/app.py` serves this via `/api/polygon_map`. The frontend fetches that endpoint to draw the parking rectangles on the map.
 
 ### Versioning (Docker `:latest` analogy)
@@ -57,6 +65,50 @@ To roll back: copy any dated file over `_latest` and commit it.
 
 ---
 
+## features/
+
+Raw OSM/Overpass feature layers, fetched via `data_pipeline/scripts/fetch_osm_features.py`.
+These are the source data for the 2 per-spot-accurate proximity fields on `polygons/`
+(plus 2 more categories not currently surfaced anywhere in the app — see below).
+
+| File | OSM tags queried | Feeds field |
+|------|------|------|
+| `transit_stops.geojson` | `highway=bus_stop`, `railway=[stop,station,halt]`, `public_transport=stop_position` | `transit_dist` |
+| `parks.geojson` | `leisure=[park,garden]`, `landuse=recreation_ground` | `city_facility_dist` (shown as "Parks" in the UI) |
+| `water_fountains.geojson` | `amenity=drinking_water` | `water_fountain_dist` (not currently used by the frontend) |
+| `streams.geojson` | `waterway=stream` | `streams_oakland_dist` (not currently used by the frontend) |
+| `grocery_stores.geojson` | `shop=[supermarket, grocery]` (excludes `shop=convenience`, matching Google Maps' own categorization) | `grocery_dist` (new field — not yet surfaced in the UI) |
+
+Each file is deduplicated: first by exact OSM `(element_type, id)` (defensive — osmnx
+already guarantees this), then by collapsing features of the same category within ~15m
+of each other into one representative feature (handles e.g. a park tagged as both a
+polygon and a nearby entrance node). **Exception: streams are not proximity-deduped** —
+stream segments are LineStrings frequently split at confluences/bridges, so nearby
+segments are legitimately distinct, not duplicates.
+
+Only the 5 "latest" files are committed; dated archives (`archive/YYYY-MM-DD_HH-MM/`)
+are local-only, same convention as `candidates/` and `polygons/`. Rerun
+`fetch_osm_features.py` periodically to keep these current — it's idempotent, fully
+overwriting each category with a fresh Overpass fetch.
+
+**Used by:** `data_pipeline/scripts/compute_spot_distances.py` reads these files +
+`data/polygons/parking_polygons_latest.geojson`, and computes `transit_dist`,
+`city_facility_dist`, `water_fountain_dist`, `streams_oakland_dist`, and `grocery_dist`
+for every individual parking spot (not the shared block-level candidate — see why in the
+script's docstring). Only `transit_dist` and `city_facility_dist` are written back into
+`polygons/parking_polygons_latest.geojson` today; `water_fountain_dist`,
+`streams_oakland_dist`, and `grocery_dist` are computed but not yet wired into the
+frontend or the polygons file (a follow-up, not part of this pipeline).
+
+Of the 13 original proximity fields, only these 5 have a genuine OSM-tag equivalent. The
+other 8 (`general_plan_dist`, `wildfire_dist`, `public_housing_dist`,
+`assisted_housing_dist`, `mobile_vending_dist`, `sewer_collection_dist`,
+`water_infrastructure_dist`, `man_water_dist`) are Oakland-specific zoning/hazard/
+utility/registry datasets with no OSM equivalent, and are left untouched wherever they
+appear (`candidates/` and the 2 corresponding fields on `polygons/`).
+
+---
+
 ## Data flow
 
 ```
@@ -67,6 +119,9 @@ data_pipeline/output/spotangels_*.geojson   (raw SpotAngels scrape)
 data/candidates/candidates_with_features.geojson
         ↓  generate_parking_polygons.py
 data/polygons/parking_polygons_latest.geojson
+        +  data/features/*.geojson  (live OSM/Overpass, full-city, periodic refresh)
+        ↓  fetch_osm_features.py  →  compute_spot_distances.py
+data/polygons/parking_polygons_latest.geojson  (transit_dist/city_facility_dist now per-spot-accurate)
         ↓  backend /api/polygon_map
 frontend map (the colored parking rectangles you see on the site)
 ```

@@ -28,6 +28,10 @@ data/polygons/parking_polygons_2*.geojson
 # Dated candidates archives (local history only; candidates_with_features.geojson is committed)
 data/candidates/candidates_with_features_2*.geojson
 
+# Dated OSM feature-layer archives (local history only; the 5 "latest" files in
+# data/features/ are committed)
+data/features/archive/
+
 # Polygon file removed from frontend/public (now served via /api/polygon_map)
 frontend/public/parking_polygons.geojson
 
