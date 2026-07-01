@@ -458,7 +458,19 @@ export default function OnboardingGoalPage() {
   ]
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ background: '#0f2a2a' }}>
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ background: '#0f2a2a' }}>
+      {/* Persistent concept thumbnail */}
+      <div className="hidden sm:flex absolute top-6 right-6 items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-2 pr-4 max-w-xs">
+        <img
+          src="/tinyHomeParklet.webp"
+          alt="A tiny yellow home with a white picket fence on an Oakland parking space"
+          className="w-14 h-14 rounded-lg object-cover shrink-0"
+        />
+        <p className="text-xs text-teal-200/70 leading-snug">
+          Factory-built Park Models, installed on parking spaces, connected to utilities.
+        </p>
+      </div>
+
       {/* Progress dots */}
       <div className="flex gap-2 mb-10">
         {[0, 1, 2, 3].map(i => (

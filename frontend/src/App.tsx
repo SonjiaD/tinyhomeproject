@@ -15,7 +15,7 @@ import SignupPage from './pages/SignupPage'
 import OnboardingGoalPage from './pages/OnboardingGoalPage'
 import ProfilePage from './pages/ProfilePage'
 
-const PRE_AUTH_ROUTES = ['/', '/login', '/signup', '/onboarding/goal']
+const PRE_AUTH_ROUTES = ['/', '/login', '/signup', '/onboarding/goal', '/intro']
 
 const navLinks = [
   // { to: '/home', label: 'Home' },
@@ -23,6 +23,7 @@ const navLinks = [
   // { to: '/vote', label: 'Community Vote' },
   // { to: '/suggest', label: 'Suggest a Location' },
   // { to: '/polygon-map', label: 'Parking Spots' },
+  { to: '/intro', label: 'Intro' },
   { to: '/about', label: 'About' },
   { to: '/profile', label: 'Profile' },
 ]
@@ -94,6 +95,7 @@ function AppShell() {
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/intro" element={<LandingPage standalone />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/about" element={<AboutPage />} />

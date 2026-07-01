@@ -162,7 +162,7 @@ function SlideHero({ onNext }: { onNext: () => void }) {
       {/* Background image */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-20"
-        style={{ backgroundImage: "url('/verticalParklet.png')" }}
+        style={{ backgroundImage: "url('/tinyHomeParklet.webp')" }}
       />
       {/* Gradient overlay */}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #0d2626 60%, #1a3a3a 100%)' }} />
@@ -198,7 +198,44 @@ function SlideHero({ onNext }: { onNext: () => void }) {
   )
 }
 
-// ── Slide 2: Stats ────────────────────────────────────────────────────────────
+// ── Slide 2: What Is a Tiny Home Parklet? ─────────────────────────────────────
+function SlideConcept() {
+  return (
+    <div className="w-full h-full flex items-center" style={{ background: '#f8f7f5' }}>
+      <div className="max-w-5xl w-full mx-auto px-10 flex flex-col md:flex-row gap-12 items-center">
+        <motion.div
+          initial={{ opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex-1"
+        >
+          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-600 mb-3">The Concept</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">What is a Tiny Home Parklet?</h2>
+          <p className="text-gray-500 leading-relaxed">
+            Permitted factory-built Park Models (also known as Tiny Homes on Wheels): fully
+            code-compliant homes with kitchens and bathrooms, installed on Oakland parking
+            spaces, connected to utilities, and rented at market rate.
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.15, duration: 0.5 }}
+          className="flex-1 rounded-2xl overflow-hidden shadow-lg border border-gray-100"
+        >
+          <img
+            src="/tinyHomeParklet.webp"
+            alt="A tiny yellow home with a white picket fence on an Oakland parking space"
+            className="w-full h-full object-cover"
+          />
+        </motion.div>
+      </div>
+    </div>
+  )
+}
+
+// ── Slide 3: Stats ────────────────────────────────────────────────────────────
 function StatCard({ value, label, sub, active, delay = 0 }: {
   value: number; label: string; sub: string; active: boolean; delay?: number
 }) {
@@ -265,7 +302,7 @@ function SlideStats({ active, parkingCount }: { active: boolean; parkingCount: n
   )
 }
 
-// ── Slide 3: Three Visions ────────────────────────────────────────────────────
+// ── Slide 4: Three Visions ────────────────────────────────────────────────────
 const visions = [
   {
     units: '6,000',
@@ -349,7 +386,7 @@ function SlideVisions() {
   )
 }
 
-// ── Slide 4: How to Help ──────────────────────────────────────────────────────
+// ── Slide 5: How to Help ──────────────────────────────────────────────────────
 const steps = [
   {
     num: '01',
@@ -427,7 +464,7 @@ function SlideHow() {
   )
 }
 
-// ── Slide 5: CTA ──────────────────────────────────────────────────────────────
+// ── Slide 6: CTA ──────────────────────────────────────────────────────────────
 function SlideCTA() {
   return (
     <div className="relative w-full h-full flex items-center justify-center overflow-hidden" style={{ background: '#0d2626' }}>
@@ -467,10 +504,10 @@ function SlideCTA() {
 }
 
 // ── Main LandingPage ──────────────────────────────────────────────────────────
-const SLIDE_COUNT = 5
-const SLIDE_IS_DARK = [true, false, true, false, true]
+const SLIDE_COUNT = 6
+const SLIDE_IS_DARK = [true, false, false, true, false, true]
 
-export default function LandingPage() {
+export default function LandingPage({ standalone = false }: { standalone?: boolean }) {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
   const [[current, direction], setCurrent] = useState([0, 0])
@@ -479,8 +516,8 @@ export default function LandingPage() {
   const parkingCount = rawParkingCount ?? 0
 
   useEffect(() => {
-    if (!loading && user) navigate('/parking-vote', { replace: true })
-  }, [user, loading, navigate])
+    if (!standalone && !loading && user) navigate('/parking-vote', { replace: true })
+  }, [standalone, user, loading, navigate])
 
   const go = useCallback((next: number, dir?: number) => {
     if (next < 0 || next >= SLIDE_COUNT) return
@@ -519,7 +556,8 @@ export default function LandingPage() {
 
   const slides = [
     <SlideHero onNext={goNext} />,
-    <SlideStats active={current === 1} parkingCount={parkingCount} />,
+    <SlideConcept />,
+    <SlideStats active={current === 2} parkingCount={parkingCount} />,
     <SlideVisions />,
     <SlideHow />,
     <SlideCTA />,
@@ -533,22 +571,37 @@ export default function LandingPage() {
           Tiny Home Parklet Siting Tool
         </span>
         <div className="flex items-center gap-3">
-          <Link
-            to="/login"
-            className={`text-sm font-medium transition-colors ${isDark ? 'text-white/70 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
-          >
-            Log in
-          </Link>
-          <Link
-            to="/signup"
-            className={`text-sm font-semibold px-4 py-1.5 rounded-full transition-all backdrop-blur-sm ${
-              isDark
-                ? 'bg-white/10 hover:bg-white/20 border border-white/20 text-white'
-                : 'bg-gray-900/8 hover:bg-gray-900/15 border border-gray-400 text-gray-700'
-            }`}
-          >
-            Sign up
-          </Link>
+          {standalone ? (
+            <Link
+              to="/parking-vote"
+              className={`text-sm font-semibold px-4 py-1.5 rounded-full transition-all backdrop-blur-sm ${
+                isDark
+                  ? 'bg-white/10 hover:bg-white/20 border border-white/20 text-white'
+                  : 'bg-gray-900/8 hover:bg-gray-900/15 border border-gray-400 text-gray-700'
+              }`}
+            >
+              ← Back to map
+            </Link>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className={`text-sm font-medium transition-colors ${isDark ? 'text-white/70 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+              >
+                Log in
+              </Link>
+              <Link
+                to="/signup"
+                className={`text-sm font-semibold px-4 py-1.5 rounded-full transition-all backdrop-blur-sm ${
+                  isDark
+                    ? 'bg-white/10 hover:bg-white/20 border border-white/20 text-white'
+                    : 'bg-gray-900/8 hover:bg-gray-900/15 border border-gray-400 text-gray-700'
+                }`}
+              >
+                Sign up
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
