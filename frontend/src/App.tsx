@@ -43,7 +43,7 @@ function NavBar() {
     <nav className="bg-primary-900 border-b border-primary-800">
       <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
         <Link to="/home" className="text-lg font-semibold text-white tracking-tight">
-          Tiny Home Siting Tool
+          Tiny Home Parklet Siting Tool
         </Link>
         <div className="flex items-center gap-1">
           {navLinks.map(({ to, label }) => (
