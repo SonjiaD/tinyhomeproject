@@ -91,27 +91,26 @@ export default function AboutPage() {
           </ul>
         </AboutSection>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <AboutSection label="The Team">
-            <p className="text-gray-600 leading-relaxed">
-              This tool was developed by the Kalyan Lab at the University of British Columbia (UBC)
-              in 2026, focusing on urban analytics, GIS, and equitable urban planning. Our goal is
-              to make complex spatial decision-making accessible to community members and planners alike.
-            </p>
-            <p className="text-gray-600 leading-relaxed mt-3">
-              In collaboration with Adam Garrett-Clark (Tiny Logic, founder of Neighborship), who
-              shaped the tiny home parklet concept and campaign.
-            </p>
-          </AboutSection>
+        <AboutSection label="The Team">
+          <p className="text-gray-600 leading-relaxed">
+            This tool was developed by the <strong>Kalyan Lab</strong> at the{' '}
+            <strong>University of British Columbia (UBC)</strong> in 2026, focusing on urban
+            analytics, GIS, and equitable urban planning. Our goal is to make complex spatial
+            decision-making accessible to community members and planners alike.
+          </p>
+          <p className="text-gray-600 leading-relaxed mt-3">
+            In collaboration with <strong>Adam Garrett-Clark</strong> (Tiny Logic, founder of{' '}
+            <strong>Neighborship</strong>), who shaped the tiny home parklet concept and campaign.
+          </p>
+        </AboutSection>
 
-          <AboutSection label="Get Involved">
-            <p className="text-gray-600 leading-relaxed">
-              Vote on the map to show which parking spots you'd support converting to tiny homes.
-              Share the tool with neighbors and community members. The more Oaklanders who weigh in,
-              the stronger the case for making this a reality.
-            </p>
-          </AboutSection>
-        </div>
+        <AboutSection label="Get Involved">
+          <p className="text-gray-600 leading-relaxed">
+            Vote on the map to show which parking spots you'd support converting to tiny homes.
+            Share the tool with neighbors and community members. The more Oaklanders who weigh in,
+            the stronger the case for making this a reality.
+          </p>
+        </AboutSection>
 
         <FAQSection />
       </div>

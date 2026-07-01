@@ -167,7 +167,13 @@ export default function ProfilePage() {
         <div className="flex items-start justify-between gap-4 mb-10">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Your Profile</h1>
-            <p className="text-gray-500">Update your goal and preferences any time.</p>
+            <p className="text-gray-700 font-medium">
+              {user?.user_metadata?.full_name || user?.email}
+            </p>
+            {user?.user_metadata?.full_name && (
+              <p className="text-gray-400 text-sm mb-1">{user.email}</p>
+            )}
+            <p className="text-gray-500 mt-1">Update your goal and preferences any time.</p>
           </div>
           <div className="shrink-0 pt-1.5 text-sm font-medium">
             {saving ? (
