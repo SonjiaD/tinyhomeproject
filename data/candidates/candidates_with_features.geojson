@@ -1,7 +1,7 @@
 {
   "type": "FeatureCollection",
-  "merged_at": "2026-05-23T06:35:10.043710+00:00",
-  "total_spots": 8922,
+  "merged_at": "2026-07-01T20:01:57.298831+00:00",
+  "total_spots": 8967,
   "features": [
     {
       "type": "Feature",
@@ -200604,6 +200604,1401 @@
         "coordinates": [
           -122.26325814989046,
           37.887201514722825
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_001",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 259.0952994221548,
+        "city_facility_dist": 14.683680823452464,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29219189600427,
+          37.80845489360579
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_002",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 455.79441501944046,
+        "city_facility_dist": 141.8067526450178,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28931465,
+          37.82471
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_003",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 469.77192165634546,
+        "city_facility_dist": 181.68212017911006,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.2894565,
+          37.82505260000001
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_004",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 273.42390185213304,
+        "city_facility_dist": 32.00858600393713,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.2929205482014,
+          37.80740492950726
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_005",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 123.75608420770571,
+        "city_facility_dist": 43.13450968036216,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28940255,
+          37.8190468
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_006",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 103.36552568465191,
+        "city_facility_dist": 43.595060933869725,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28905066917419,
+          37.819030085364794
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_007",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 67.87552571773212,
+        "city_facility_dist": 14.073745576196307,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28979905530461,
+          37.81603193017662
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_008",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 71.69054112458251,
+        "city_facility_dist": 42.800154825884356,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28909898512798,
+          37.817858075648424
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_009",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 80.60225474691453,
+        "city_facility_dist": 45.8163038814446,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29159185854917,
+          37.81122268262416
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_010",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 170.5152555199938,
+        "city_facility_dist": 49.87642117678797,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29317420668956,
+          37.80649338556231
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_011",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 101.63878165981824,
+        "city_facility_dist": 17.500848642971913,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.2899852455672,
+          37.81445112919006
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_012",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 176.0117329292673,
+        "city_facility_dist": 47.94202710412154,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29073265498401,
+          37.81342087546686
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_013",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 222.3898130366185,
+        "city_facility_dist": 90.92322298686533,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28895337465376,
+          37.82019757070915
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_014",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 261.1843121347596,
+        "city_facility_dist": 421.9657157207463,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29358758335633,
+          37.802108359750235
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_015",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 16.330033766528235,
+        "city_facility_dist": 226.81729764949318,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.2938833763961,
+          37.8044162456322
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_016",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 80.32125530335435,
+        "city_facility_dist": 42.32519144195354,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29188405858797,
+          37.810383886769536
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_017",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 228.38892734670526,
+        "city_facility_dist": 24.10839276736704,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29275323197109,
+          37.80691793579257
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_018",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 214.81380044037334,
+        "city_facility_dist": 18.892226118525517,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.2888780233015,
+          37.821171697228706
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_019",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 212.81868366732283,
+        "city_facility_dist": 69.13247422075678,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28932865851715,
+          37.8200185475723
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_020",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 144.9682108637459,
+        "city_facility_dist": 41.547317027712424,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.2910054319579,
+          37.81268466583903
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_021",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 154.55951423039895,
+        "city_facility_dist": 60.08689292848339,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29214461523007,
+          37.80953017135277
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_022",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 31.091684903567103,
+        "city_facility_dist": 84.81849613543024,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28920375,
+          37.81675785
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_023",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 389.6204581409159,
+        "city_facility_dist": 45.06143700139004,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28891072429812,
+          37.8238684514265
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_024",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 264.8872591595927,
+        "city_facility_dist": 17.386463867305885,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28879218255818,
+          37.82243315811277
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_025",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 62.682897162957616,
+        "city_facility_dist": 18.094779159638666,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28946360876878,
+          37.81593839725331
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_026",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 185.89900912248797,
+        "city_facility_dist": 18.864809934430735,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29051651102591,
+          37.812974467399044
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_027",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 93.03231650969943,
+        "city_facility_dist": 16.88958270586858,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29165363737276,
+          37.80992826412581
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_028",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 284.65948104754534,
+        "city_facility_dist": 44.13715766140211,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29264064192014,
+          37.808162239316395
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_029",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 234.49621622677944,
+        "city_facility_dist": 34.848479761960434,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29241609472447,
+          37.80879834816588
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_030",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 144.12914492040977,
+        "city_facility_dist": 45.420331847760956,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.2913052726606,
+          37.81195616858838
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_031",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 85.35255908882722,
+        "city_facility_dist": 14.276908681471781,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29033371893495,
+          37.81452548304653
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_032",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 247.2148063906898,
+        "city_facility_dist": 14.456565788694062,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.2892307501729,
+          37.82127758219221
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_033",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 288.1038232793995,
+        "city_facility_dist": 12.839060184581722,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28913520641817,
+          37.822420058781375
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_034",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 21.916991537384238,
+        "city_facility_dist": 154.88974392531378,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29361075,
+          37.80503705
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_035",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 138.47753494889798,
+        "city_facility_dist": 490.6123802202378,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28747524764103,
+          37.82820188653479
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_036",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 282.17717578374635,
+        "city_facility_dist": 419.3620180011465,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28953687792897,
+          37.82721537926847
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_037",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 393.57963687758024,
+        "city_facility_dist": 40.36492228031997,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28906179370647,
+          37.823817987403885
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_038",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 93.51010656921031,
+        "city_facility_dist": 105.72750699138322,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28946071920328,
+          37.81846302126587
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_039",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 90.93355931772048,
+        "city_facility_dist": 18.966886133844987,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.2910639133732,
+          37.811500055899195
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_040",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 37.26192208110887,
+        "city_facility_dist": 20.983438522796803,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28955853055935,
+          37.81755192365029
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_041",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 41.88850493252681,
+        "city_facility_dist": 44.20017043203506,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28912439859593,
+          37.81715087721005
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_042",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 34.777053012886576,
+        "city_facility_dist": 72.86329391445624,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28962660532314,
+          37.81690490578337
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_043",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 67.87403002116373,
+        "city_facility_dist": 98.37696828578062,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29346137091859,
+          37.805579994670516
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_044",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 70.80869105448875,
+        "city_facility_dist": 94.740372523845,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29334534195814,
+          37.80554706564024
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mandela_045",
+        "address": "Mandela Parkway, Oakland, CA",
+        "max_stay": "unknown",
+        "name": "Manually added — known coverage gap",
+        "type": "free",
+        "reason": "Manual addition: real-world curb/RV parking observed on this corridor, not captured by the SpotAngels scrape.",
+        "transit_dist": 18.860587797238075,
+        "city_facility_dist": 155.8332261240751,
+        "homeless_service_dist": 1949.641788941575,
+        "assisted_housing_dist": 400.02749626836345,
+        "general_plan_dist": 187.26468361708862,
+        "public_housing_dist": 332.43082775165453,
+        "water_fountain_dist": 1032.2313916785956,
+        "man_water_dist": 3407.9954734501266,
+        "mobile_vending_dist": 3629.1489740509414,
+        "water_infrastructure_dist": 11.569733107707362,
+        "streams_oakland_dist": 368.9675921333538,
+        "sewer_collection_dist": 75.80182634696205,
+        "wildfire_dist": 2718.8137202042485
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.2936449,
+          37.805043600000005
         ]
       }
     }
