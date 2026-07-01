@@ -124,14 +124,28 @@ const faqItems: FAQItem[] = [
   {
     question: 'What happens to parking?',
     answer: (
-      <p>
-        On-street parking is a small fraction of total parking in Oakland. The vast majority sits
-        in private driveways, garages, surface lots, and structures, and most cars in Oakland don't
-        sleep on the street. Research by parking economists has consistently found this pattern
-        across U.S. cities. If we wanted to compensate further, a portion of the new tax revenue
-        could fund neighborhood-permit-only structured parking, paid for by the new housing the
-        spaces became.
-      </p>
+      <>
+        <p className="mb-3">
+          On-street parking is a small fraction of total parking in Oakland. The vast majority sits
+          in private driveways, garages, surface lots, and structures, and most cars in Oakland don't
+          sleep on the street. Research by parking economists has consistently found this pattern
+          across U.S. cities. If we wanted to compensate further, a portion of the new tax revenue
+          could fund neighborhood-permit-only structured parking, paid for by the new housing the
+          spaces became.
+        </p>
+        <p>
+          Parking demand is already starting to fall. Autonomous ride-hailing services like Waymo
+          are now operating commercially in San Francisco, Phoenix, Los Angeles, and a growing list
+          of cities: every ride in a self-driving vehicle is a ride that doesn't require a parked
+          car at either end. Peer-reviewed studies project urban parking demand will drop at least
+          20% in dense areas by 2030 as autonomous mobility scales, with reductions reaching
+          80–90% as shared AV adoption matures. Even in conservative scenarios where most AVs
+          remain privately owned, researchers project 25–32% of city center parking will be freed
+          up, simply because self-driving cars can drop passengers off and drive themselves home.
+          Oakland's surplus parking is already a wasting asset on a one-way trajectory. Converting
+          some of it to housing now means getting ahead of a transition that's already underway.
+        </p>
+      </>
     ),
   },
   {

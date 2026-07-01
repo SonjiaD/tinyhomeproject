@@ -38,10 +38,9 @@ export default function AboutPage() {
 
         <AboutSection label="What Is a Tiny Home Parklet?">
           <p className="text-gray-600 leading-relaxed mb-4">
-            A vertical parklet is a concept that places tiny homes above existing parking lots,
-            preserving parking capacity while adding dignified housing and green rooftop space.
-            The design integrates stairway access, landscaping, and compact living units into
-            underused urban infrastructure.
+            Permitted factory-built Park Models (also known as Tiny Homes on Wheels): fully
+            code-compliant homes with kitchens and bathrooms, installed on Oakland parking
+            spaces, connected to utilities, and rented at market rate.
           </p>
           <div className="rounded-xl overflow-hidden border border-gray-100">
             <img
@@ -53,7 +52,7 @@ export default function AboutPage() {
             />
           </div>
           <p className="mt-2 text-xs text-gray-400">
-            Concept rendering of a vertical parklet design for Oakland.
+            Concept rendering of a Tiny Home Parklet for Oakland.
           </p>
         </AboutSection>
 
@@ -98,6 +97,10 @@ export default function AboutPage() {
               This tool was developed by the Kalyan Lab at the University of British Columbia (UBC)
               in 2026, focusing on urban analytics, GIS, and equitable urban planning. Our goal is
               to make complex spatial decision-making accessible to community members and planners alike.
+            </p>
+            <p className="text-gray-600 leading-relaxed mt-3">
+              In collaboration with Adam Garrett-Clark (Tiny Logic, founder of Neighborship), who
+              shaped the tiny home parklet concept and campaign.
             </p>
           </AboutSection>
 
