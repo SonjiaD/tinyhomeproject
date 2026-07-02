@@ -196,12 +196,6 @@ export default function ProfilePage() {
         <div className="flex items-start justify-between gap-4 mb-10">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Your Profile</h1>
-            <p className="text-gray-700 font-medium">
-              {user?.user_metadata?.full_name || user?.email}
-            </p>
-            {user?.user_metadata?.full_name && (
-              <p className="text-gray-400 text-sm mb-1">{user.email}</p>
-            )}
             <p className="text-gray-500 mt-1">Update your goal and preferences any time.</p>
           </div>
           <div className="shrink-0 pt-1.5 text-sm font-medium">
@@ -222,6 +216,22 @@ export default function ProfilePage() {
             ) : null}
           </div>
         </div>
+
+        {/* Account (read-only) */}
+        <section className="mb-10">
+          <SectionLabel className="mb-1">Account</SectionLabel>
+          <p className="text-gray-400 text-sm mb-4">Set when you signed up. These can't be changed here.</p>
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-16">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Name</p>
+              <p className="text-gray-800 font-medium">{profile?.full_name || user?.user_metadata?.full_name}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Email</p>
+              <p className="text-gray-800 font-medium">{profile?.email || user?.email}</p>
+            </div>
+          </div>
+        </section>
 
         {/* Goal tier */}
         <section className="mb-10">

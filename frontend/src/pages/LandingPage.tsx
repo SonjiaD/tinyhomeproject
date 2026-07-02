@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, type Transition } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { useParkingCount } from '../lib/useParkingCount'
+import { supabase } from '../lib/supabase'
 
 // ── Animated counter hook ─────────────────────────────────────────────────────
 function useCounter(target: number, active: boolean, duration = 1400) {
@@ -515,8 +516,20 @@ export default function LandingPage({ standalone = false }: { standalone?: boole
   const rawParkingCount = useParkingCount()
   const parkingCount = rawParkingCount ?? 0
 
+  // Auto-redirect authenticated users away from the landing page. First-timers who
+  // haven't set a goal yet (e.g. arriving via the email-confirmation link) go to the
+  // onboarding survey; everyone else goes to the map. Query the goal directly rather
+  // than relying on the async-loading AuthContext profile to avoid a misroute race.
   useEffect(() => {
-    if (!standalone && !loading && user) navigate('/parking-vote', { replace: true })
+    if (standalone || loading || !user) return
+    let cancelled = false
+    ;(async () => {
+      const { data: prof } = await supabase
+        .from('profiles').select('goal').eq('id', user.id).maybeSingle()
+      if (cancelled) return
+      navigate(prof?.goal ? '/parking-vote' : '/onboarding/goal', { replace: true })
+    })()
+    return () => { cancelled = true }
   }, [standalone, user, loading, navigate])
 
   const go = useCallback((next: number, dir?: number) => {
