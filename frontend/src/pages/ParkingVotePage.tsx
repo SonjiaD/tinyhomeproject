@@ -635,7 +635,7 @@ function formatTax(units: number): string {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ParkingVotePage() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const parkingCount = useParkingCount()
   const [rawGeojson, setRawGeojson] = useState<any>(null)
   const [voteCounts, setVoteCounts] = useState<VoteCountsMap>({})
@@ -683,7 +683,7 @@ export default function ParkingVotePage() {
   const [batchLabel, setBatchLabel] = useState('Saving your votes…')
 
   // ── Progress / milestones / celebrations ─────────────────────────────────
-  const userGoal: number = (user?.user_metadata?.goal as number) ?? 6000
+  const userGoal: number = (profile?.goal as number) ?? 6000
   const [communityTotal, setCommunityTotal] = useState<number | null>(null)
   const [toast, setToast] = useState<{ label: string; sub?: string | null } | null>(null)
   const [halfwayCard, setHalfwayCard] = useState(false)

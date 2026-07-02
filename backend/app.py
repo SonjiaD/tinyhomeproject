@@ -190,13 +190,14 @@ def submit_vote():
     user_id = data.get("user_id") or None
     if not site_id or support is None:
         return jsonify({"error": "site_id and support are required"}), 400
+    # Voting requires login: every vote must be attributable to a user so it can be
+    # joined to that respondent's profile for research.
+    if not user_id:
+        return jsonify({"error": "You must be logged in to vote"}), 401
     try:
-        row = {"site_id": site_id, "support": bool(support), "comment": comment or None}
-        if user_id:
-            row["user_id"] = str(user_id)
-            supabase.table("votes").upsert(row, on_conflict="user_id,site_id").execute()
-        else:
-            supabase.table("votes").insert(row).execute()
+        row = {"site_id": site_id, "support": bool(support),
+               "comment": comment or None, "user_id": str(user_id)}
+        supabase.table("votes").upsert(row, on_conflict="user_id,site_id").execute()
         return jsonify({"status": "ok"}), 201
     except Exception as e:
         print(f"Error saving vote: {e}")
@@ -231,13 +232,13 @@ def submit_votes_batch():
         return jsonify({"error": "site_ids and support are required"}), 400
     if len(site_ids) > 500:
         return jsonify({"error": "Too many site_ids (max 500)"}), 400
+    # Voting requires login (see submit_vote).
+    if not user_id:
+        return jsonify({"error": "You must be logged in to vote"}), 401
     try:
-        rows = [{"site_id": str(sid), "support": bool(support), "comment": comment or None,
-                 **({"user_id": str(user_id)} if user_id else {})} for sid in site_ids]
-        if user_id:
-            supabase.table("votes").upsert(rows, on_conflict="user_id,site_id").execute()
-        else:
-            supabase.table("votes").insert(rows).execute()
+        rows = [{"site_id": str(sid), "support": bool(support),
+                 "comment": comment or None, "user_id": str(user_id)} for sid in site_ids]
+        supabase.table("votes").upsert(rows, on_conflict="user_id,site_id").execute()
         return jsonify({"status": "ok", "count": len(rows)}), 201
     except Exception as e:
         print(f"Error saving batch votes: {e}")

@@ -56,6 +56,22 @@ const OWNERSHIP_OPTIONS = [
   { value: 'other',              label: 'Other idea',           subtext: 'Tell us what you\'re thinking' },
 ]
 
+const AGE_RANGES = ['under_18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+', 'prefer_not_to_say']
+const HOUSEHOLD_TYPES = [
+  { value: 'lives_alone', label: 'Live alone' },
+  { value: 'with_family', label: 'With family' },
+  { value: 'with_roommates', label: 'With roommates' },
+  { value: 'other', label: 'Other' },
+  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+]
+const INCOME_RANGES = ['under_25k', '25k-50k', '50k-75k', '75k-100k', '100k-150k', 'over_150k', 'prefer_not_to_say']
+const RANGE_LABELS: Record<string, string> = {
+  under_18: 'Under 18', '65+': '65+', prefer_not_to_say: 'Prefer not to say',
+  under_25k: 'Under $25k', '25k-50k': '$25k–50k', '50k-75k': '$50k–75k',
+  '75k-100k': '$75k–100k', '100k-150k': '$100k–150k', over_150k: 'Over $150k',
+}
+const rangeLabel = (v: string) => RANGE_LABELS[v] ?? v.replace(/-/g, '–')
+
 // Source: City of Oakland Open Data portal — data.oaklandca.gov/resource/gwm6-hyga.geojson
 const NEIGHBORHOODS = [
   "Acorn/ Acorn Industrial", "Adams Point", "Allendale", "Arroyo Viejo",
@@ -92,66 +108,79 @@ const NEIGHBORHOODS = [
 ]
 
 export default function ProfilePage() {
-  const { user } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const [goal, setGoal] = useState<number | null>(null)
   const [roles, setRoles] = useState<string[]>([])
   const [neighborhood, setNeighborhood] = useState('')
   const [neighborhoodSearch, setNeighborhoodSearch] = useState('')
   const [ownershipModel, setOwnershipModel] = useState<string | null>(null)
   const [ownershipOther, setOwnershipOther] = useState('')
+  const [occupation, setOccupation] = useState('')
+  const [ageRange, setAgeRange] = useState<string | null>(null)
+  const [householdType, setHouseholdType] = useState<string | null>(null)
+  const [incomeRange, setIncomeRange] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const [loaded, setLoaded] = useState(false)
   const skipNextSave = useRef(true)
-  const hasLoadedMeta = useRef(false)
+  const hasLoadedProfile = useRef(false)
 
-  // Only ever pull server metadata into local state once. `user` also changes after our
-  // own saves (Supabase fires a USER_UPDATED auth event), and re-applying it here would
-  // create new array/object references that look like edits, retriggering another save.
+  // Only ever pull the server profile into local state once, so our own debounced saves
+  // (which call refreshProfile and change the `profile` reference) don't look like edits
+  // and retrigger another save.
   useEffect(() => {
-    if (hasLoadedMeta.current) return
-    const meta = user?.user_metadata
-    if (!meta) return
-    hasLoadedMeta.current = true
-    if (meta.goal) setGoal(meta.goal)
-    if (meta.roles) setRoles(meta.roles)
-    if (meta.neighborhood) {
-      setNeighborhood(meta.neighborhood)
-      setNeighborhoodSearch(meta.neighborhood === 'not-oakland' ? '' : meta.neighborhood)
+    if (hasLoadedProfile.current) return
+    if (!profile) return
+    hasLoadedProfile.current = true
+    if (profile.goal) setGoal(profile.goal)
+    if (profile.roles) setRoles(profile.roles)
+    if (profile.neighborhood) {
+      setNeighborhood(profile.neighborhood)
+      setNeighborhoodSearch(profile.neighborhood === 'not-oakland' ? '' : profile.neighborhood)
     }
-    if (meta.ownership_model) setOwnershipModel(meta.ownership_model)
-    if (meta.ownership_other) setOwnershipOther(meta.ownership_other)
+    if (profile.ownership_model) setOwnershipModel(profile.ownership_model)
+    if (profile.ownership_other) setOwnershipOther(profile.ownership_other)
+    if (profile.occupation) setOccupation(profile.occupation)
+    if (profile.age_range) setAgeRange(profile.age_range)
+    if (profile.household_type) setHouseholdType(profile.household_type)
+    if (profile.income_range) setIncomeRange(profile.income_range)
     setLoaded(true)
-  }, [user])
+  }, [profile])
 
   // Autosave: debounce so rapid multi-clicks (e.g. selecting several roles) collapse into one save.
   useEffect(() => {
     if (!loaded) return
     if (skipNextSave.current) { skipNextSave.current = false; return }
-    if (!goal) return
+    if (!goal || !user) return
     setSaving(true)
     setError('')
     const timeout = setTimeout(async () => {
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          goal,
-          roles,
-          neighborhood: neighborhood || null,
-          ownership_model: ownershipModel || null,
-          ownership_other: ownershipModel === 'other' ? ownershipOther || null : null,
-        },
+      const { error } = await supabase.from('profiles').upsert({
+        id: user.id,
+        email: user.email ?? null,
+        full_name: (user.user_metadata?.full_name as string) ?? null,
+        goal,
+        roles,
+        neighborhood: neighborhood || null,
+        ownership_model: ownershipModel || null,
+        ownership_other: ownershipModel === 'other' ? ownershipOther || null : null,
+        occupation: occupation || null,
+        age_range: ageRange || null,
+        household_type: householdType || null,
+        income_range: incomeRange || null,
       })
       setSaving(false)
       if (error) {
         setError('Could not save your profile. Please try again.')
       } else {
         setSaved(true)
+        await refreshProfile()
         setTimeout(() => setSaved(false), 2000)
       }
     }, 700)
     return () => clearTimeout(timeout)
-  }, [loaded, goal, roles, neighborhood, ownershipModel, ownershipOther])
+  }, [loaded, goal, roles, neighborhood, ownershipModel, ownershipOther, occupation, ageRange, householdType, incomeRange])
 
   const filteredNeighborhoods = neighborhoodSearch.length > 0
     ? NEIGHBORHOODS.filter(n => n.toLowerCase().includes(neighborhoodSearch.toLowerCase()))
@@ -373,6 +402,82 @@ export default function ProfilePage() {
           >
             I don't live in Oakland
           </button>
+        </section>
+
+        {/* About You (demographics) */}
+        <section className="mb-10">
+          <SectionLabel className="mb-1">About You</SectionLabel>
+          <p className="text-gray-400 text-sm mb-4">Optional — helps researchers understand who supports tiny home parklets.</p>
+
+          <div className="flex flex-col gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Occupation</label>
+              <input
+                type="text"
+                placeholder="e.g. Teacher, Student, Planner…"
+                value={occupation}
+                onChange={e => setOccupation(e.target.value)}
+                className="w-full max-w-sm bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Age range</label>
+              <div className="flex flex-wrap gap-2">
+                {AGE_RANGES.map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setAgeRange(ageRange === v ? null : v)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150 focus:outline-none ${
+                      ageRange === v
+                        ? 'border-teal-500 bg-teal-50 text-teal-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-800'
+                    }`}
+                  >
+                    {rangeLabel(v)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Household</label>
+              <div className="flex flex-wrap gap-2">
+                {HOUSEHOLD_TYPES.map(h => (
+                  <button
+                    key={h.value}
+                    onClick={() => setHouseholdType(householdType === h.value ? null : h.value)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150 focus:outline-none ${
+                      householdType === h.value
+                        ? 'border-teal-500 bg-teal-50 text-teal-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-800'
+                    }`}
+                  >
+                    {h.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Household income</label>
+              <div className="flex flex-wrap gap-2">
+                {INCOME_RANGES.map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setIncomeRange(incomeRange === v ? null : v)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150 focus:outline-none ${
+                      incomeRange === v
+                        ? 'border-teal-500 bg-teal-50 text-teal-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-800'
+                    }`}
+                  >
+                    {rangeLabel(v)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </section>
 
         <div className="h-16" />

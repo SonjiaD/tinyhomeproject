@@ -20,8 +20,16 @@ export default function LoginPage() {
     if (error) {
       setError('Invalid email or password. Please try again.')
     } else {
+      // Route to onboarding if they haven't set a goal yet (goal now lives in the
+      // profiles table, not auth metadata).
       const { data: { user } } = await supabase.auth.getUser()
-      navigate(user?.user_metadata?.goal ? '/parking-vote' : '/onboarding/goal')
+      let hasGoal = false
+      if (user) {
+        const { data: prof } = await supabase
+          .from('profiles').select('goal').eq('id', user.id).maybeSingle()
+        hasGoal = !!prof?.goal
+      }
+      navigate(hasGoal ? '/parking-vote' : '/onboarding/goal')
     }
   }
 

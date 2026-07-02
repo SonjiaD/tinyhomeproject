@@ -1,0 +1,8 @@
+script: sync_sites_to_supabase
+generated_at: '2026-07-02T06:57:17.082828+00:00'
+sites_upserted: 46970
+sites_pruned: 0
+neighborhoods_matched: 46858
+previous_run: null
+diff_vs_previous: null
+notes: initial sites population from 46970-spot dataset

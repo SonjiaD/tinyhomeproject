@@ -32,6 +32,10 @@ data/runs/*/*.geojson
 data/polygons/parking_polygons_2*.geojson
 data/candidates/candidates_with_features_2*.geojson
 
+# Research CSV exports from export_research_data.py — contain user PII, local only.
+# (manifest.yaml under data/runs/ is still committed, documenting each export.)
+data/exports/
+
 # Dated OSM feature-layer archives (local history only; the 5 "latest" files in
 # data/features/ are committed)
 data/features/archive/

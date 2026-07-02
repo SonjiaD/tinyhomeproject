@@ -142,4 +142,17 @@ data/polygons/parking_polygons_latest.geojson
 data/polygons/parking_polygons_latest.geojson  (transit_dist/city_facility_dist now per-spot-accurate)
         ↓  backend /api/polygon_map
 frontend map (the colored parking rectangles you see on the site)
+        ↓  sync_sites_to_supabase.py
+Supabase `sites` table (so each vote can be joined to its spot's location + amenities)
 ```
+
+---
+
+## exports/
+
+Timestamped research CSV exports written by `data_pipeline/scripts/export_research_data.py`
+— the full Supabase dataset (`profiles`, `sites`, `votes`, `vote_events`) plus the two
+convenience views (`votes_research`, `site_leaderboard`). **Gitignored** (contains user PII;
+local machine only). Each export also drops a manifest under `data/runs/` recording row
+counts and when it ran. See `data_pipeline/README.md` → "Supabase database" for the full
+schema and the recommended "export once, pivot offline" analysis workflow.

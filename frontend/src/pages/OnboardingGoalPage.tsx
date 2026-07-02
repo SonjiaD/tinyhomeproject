@@ -3,6 +3,23 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Home, Key, History, Heart, Briefcase, MapPin, Circle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+
+const AGE_RANGES = ['under_18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+', 'prefer_not_to_say']
+const HOUSEHOLD_TYPES = [
+  { value: 'lives_alone', label: 'Live alone' },
+  { value: 'with_family', label: 'With family' },
+  { value: 'with_roommates', label: 'With roommates' },
+  { value: 'other', label: 'Other' },
+  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+]
+const INCOME_RANGES = ['under_25k', '25k-50k', '50k-75k', '75k-100k', '100k-150k', 'over_150k', 'prefer_not_to_say']
+const RANGE_LABELS: Record<string, string> = {
+  under_18: 'Under 18', '65+': '65+', prefer_not_to_say: 'Prefer not to say',
+  under_25k: 'Under $25k', '25k-50k': '$25k–50k', '50k-75k': '$50k–75k',
+  '75k-100k': '$75k–100k', '100k-150k': '$100k–150k', over_150k: 'Over $150k',
+}
+const rangeLabel = (v: string) => RANGE_LABELS[v] ?? v.replace(/-/g, '–')
 
 const GOALS = [
   {
@@ -101,12 +118,13 @@ const slideVariants = {
 
 export default function OnboardingGoalPage() {
   const navigate = useNavigate()
+  const { user, refreshProfile } = useAuth()
   useEffect(() => {
     const el = document.getElementById('main-scroll')
     if (el) el.style.backgroundColor = '#0f2a2a'
     return () => { if (el) el.style.backgroundColor = '' }
   }, [])
-  const [step, setStep] = useState(0) // 0, 1, 2, 3
+  const [step, setStep] = useState(0) // 0..4
   const [dir, setDir] = useState(1)
   const [goal, setGoal] = useState<number | null>(null)
   const [neighborhood, setNeighborhood] = useState('')
@@ -114,6 +132,10 @@ export default function OnboardingGoalPage() {
   const [roles, setRoles] = useState<string[]>([])
   const [ownershipModel, setOwnershipModel] = useState<string | null>(null)
   const [ownershipOther, setOwnershipOther] = useState('')
+  const [occupation, setOccupation] = useState('')
+  const [ageRange, setAgeRange] = useState<string | null>(null)
+  const [householdType, setHouseholdType] = useState<string | null>(null)
+  const [incomeRange, setIncomeRange] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -135,18 +157,30 @@ export default function OnboardingGoalPage() {
     setStep(s => s - 1)
   }
 
+  async function saveProfile() {
+    if (goal === null || !user) return { error: new Error('missing') }
+    const { error } = await supabase.from('profiles').upsert({
+      id: user.id,
+      email: user.email ?? null,
+      full_name: (user.user_metadata?.full_name as string) ?? null,
+      goal,
+      neighborhood: neighborhood || null,
+      roles,
+      ownership_model: ownershipModel || null,
+      ownership_other: ownershipModel === 'other' ? ownershipOther || null : null,
+      occupation: occupation || null,
+      age_range: ageRange || null,
+      household_type: householdType || null,
+      income_range: incomeRange || null,
+    })
+    if (!error) await refreshProfile()
+    return { error }
+  }
+
   async function handleFinish() {
     if (goal === null) return
     setSaving(true)
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        goal,
-        neighborhood: neighborhood || null,
-        roles,
-        ownership_model: ownershipModel || null,
-        ownership_other: ownershipModel === 'other' ? ownershipOther || null : null,
-      },
-    })
+    const { error } = await saveProfile()
     setSaving(false)
     if (error) {
       setError('Could not save your profile. Please try again.')
@@ -158,15 +192,7 @@ export default function OnboardingGoalPage() {
   async function handleSkipToEnd() {
     if (goal === null) return
     setSaving(true)
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        goal,
-        neighborhood: neighborhood || null,
-        roles,
-        ownership_model: ownershipModel || null,
-        ownership_other: ownershipModel === 'other' ? ownershipOther || null : null,
-      },
-    })
+    const { error } = await saveProfile()
     setSaving(false)
     if (error) {
       setError('Could not save. Please try again.')
@@ -179,7 +205,7 @@ export default function OnboardingGoalPage() {
     // Step 1 — Goal
     <div key="goal" className="w-full max-w-4xl">
       <div className="text-center mb-10">
-        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 1 of 4</p>
+        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 1 of 5</p>
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
           How much of Oakland's housing crisis do you want to solve?
         </h1>
@@ -250,7 +276,7 @@ export default function OnboardingGoalPage() {
     // Step 2 — Neighborhood
     <div key="neighborhood" className="w-full max-w-xl">
       <div className="text-center mb-10">
-        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 2 of 4</p>
+        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 2 of 5</p>
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
           Which Oakland neighborhood do you most want to see this happen in?
         </h1>
@@ -330,7 +356,7 @@ export default function OnboardingGoalPage() {
     // Step 3 — Role
     <div key="role" className="w-full max-w-xl">
       <div className="text-center mb-10">
-        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 3 of 4</p>
+        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 3 of 5</p>
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
           What's your connection to Oakland?
         </h1>
@@ -385,7 +411,7 @@ export default function OnboardingGoalPage() {
     // Step 4 — Ownership model
     <div key="ownership" className="w-full max-w-xl">
       <div className="text-center mb-10">
-        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 4 of 4</p>
+        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 4 of 5</p>
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
           Who should build and own these units?
         </h1>
@@ -439,6 +465,110 @@ export default function OnboardingGoalPage() {
 
       <div className="flex flex-col items-center gap-3">
         <button
+          onClick={goNext}
+          className="bg-teal-500 hover:bg-teal-400 text-white font-bold px-10 py-4 rounded-full text-lg transition-all duration-200 shadow-lg w-full max-w-xs"
+        >
+          Continue →
+        </button>
+        <button
+          onClick={handleSkipToEnd}
+          disabled={saving}
+          className="text-teal-300/50 hover:text-teal-300 text-sm transition-colors disabled:opacity-40"
+        >
+          Skip for now
+        </button>
+        <button onClick={goBack} className="text-teal-400/40 hover:text-teal-400 text-sm transition-colors">
+          ← Back
+        </button>
+      </div>
+    </div>,
+
+    // Step 5 — About You (demographics)
+    <div key="about" className="w-full max-w-xl">
+      <div className="text-center mb-10">
+        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Step 5 of 5</p>
+        <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+          A little about you
+        </h1>
+        <p className="text-teal-300 leading-relaxed">
+          This helps researchers understand who supports tiny home parklets. All optional — answer only what you're comfortable sharing.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-6 mb-6">
+        <div>
+          <label className="block text-sm font-semibold text-teal-200/80 mb-2">Occupation</label>
+          <input
+            type="text"
+            placeholder="e.g. Teacher, Student, Planner…"
+            value={occupation}
+            onChange={e => setOccupation(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-teal-400 focus:bg-white/10 transition-all text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-teal-200/80 mb-2">Age range</label>
+          <div className="flex flex-wrap gap-2">
+            {AGE_RANGES.map(v => (
+              <button
+                key={v}
+                onClick={() => setAgeRange(ageRange === v ? null : v)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150 focus:outline-none ${
+                  ageRange === v
+                    ? 'border-teal-400 bg-teal-400/20 text-teal-300'
+                    : 'border-white/10 bg-white/5 text-teal-200/60 hover:border-white/20 hover:text-teal-200'
+                }`}
+              >
+                {rangeLabel(v)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-teal-200/80 mb-2">Household</label>
+          <div className="flex flex-wrap gap-2">
+            {HOUSEHOLD_TYPES.map(h => (
+              <button
+                key={h.value}
+                onClick={() => setHouseholdType(householdType === h.value ? null : h.value)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150 focus:outline-none ${
+                  householdType === h.value
+                    ? 'border-teal-400 bg-teal-400/20 text-teal-300'
+                    : 'border-white/10 bg-white/5 text-teal-200/60 hover:border-white/20 hover:text-teal-200'
+                }`}
+              >
+                {h.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-teal-200/80 mb-2">Household income</label>
+          <div className="flex flex-wrap gap-2">
+            {INCOME_RANGES.map(v => (
+              <button
+                key={v}
+                onClick={() => setIncomeRange(incomeRange === v ? null : v)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150 focus:outline-none ${
+                  incomeRange === v
+                    ? 'border-teal-400 bg-teal-400/20 text-teal-300'
+                    : 'border-white/10 bg-white/5 text-teal-200/60 hover:border-white/20 hover:text-teal-200'
+                }`}
+              >
+                {rangeLabel(v)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {error && <p className="text-red-400 text-sm text-center mb-4 bg-red-400/10 rounded-lg px-4 py-2">{error}</p>}
+
+      <div className="flex flex-col items-center gap-3">
+        <button
           onClick={handleFinish}
           disabled={saving}
           className="bg-teal-500 hover:bg-teal-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-10 py-4 rounded-full text-lg transition-all duration-200 shadow-lg w-full max-w-xs"
@@ -475,7 +605,7 @@ export default function OnboardingGoalPage() {
 
       {/* Progress dots */}
       <div className="flex gap-2 mb-10">
-        {[0, 1, 2, 3].map(i => (
+        {[0, 1, 2, 3, 4].map(i => (
           <div
             key={i}
             className={`rounded-full transition-all duration-300 ${

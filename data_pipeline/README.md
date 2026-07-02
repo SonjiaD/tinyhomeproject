@@ -10,10 +10,13 @@ Scripts for collecting and processing parking data. Run these manually (or via G
 3. merge_data.py              → data/candidates/candidates_with_features.geojson
    (or add_manual_points.py, for patching a specific known coverage gap — see below)
 4. generate_parking_polygons.py → data/polygons/parking_polygons_latest.geojson
+5. sync_sites_to_supabase.py  → Supabase `sites` table (so votes join to spot location/amenities)
 ```
 
 Steps 3 and 4 each write a run record to `data/runs/<timestamp>_<script>/` right
-after updating their `_latest` file — see "Run history" below.
+after updating their `_latest` file — see "Run history" below. Step 5 pushes the
+resulting spots into the database — run it whenever the spot set changes (see the
+"Supabase database" section below).
 
 ## Periodic OSM proximity-field refresh (independent of the workflow above)
 
@@ -50,7 +53,26 @@ run. See `data/README.md`'s "Versioning" section for the full shape. Pass `--not
 | `fetch_osm_features.py` | Queries Overpass (via osmnx) for 5 proximity categories with a genuine OSM-tag equivalent (transit stops, parks, water fountains, streams, grocery stores) across the full Oakland bbox. Dedupes by OSM element id, then by ~15m proximity (except streams — linear features, nearby segments are legitimately distinct). Saves one GeoJSON per category to `data/features/`. |
 | `compute_spot_distances.py` | Reads `data/features/*.geojson` + `data/polygons/parking_polygons_latest.geojson`. Computes `transit_dist`, `city_facility_dist`, `water_fountain_dist`, `streams_oakland_dist`, and `grocery_dist` for every *individual* parking spot, using each spot's own location rather than the shared parent candidate's. Only `transit_dist`/`city_facility_dist` are currently used by the frontend; the other 3 are computed but not yet wired in. `water_infrastructure_dist`/`homeless_service_dist` (no OSM equivalent) are left untouched. |
 | `fix_parking_polygons.py` | One-off utility for patching bad polygon data. |
-| `run_history.py` | Shared helper (not a standalone script) used by the three scripts above to write `data/runs/` snapshots and manifests. |
+| `sync_sites_to_supabase.py` | Pushes every parking spot from `parking_polygons_latest.geojson` into the Supabase `sites` table (coordinates, address, amenity distances, and each spot's derived Oakland neighborhood), so votes can be joined to real location data for research. Requires `SUPABASE_SERVICE_ROLE_KEY`. Re-run after `generate_parking_polygons.py` / `compute_spot_distances.py` change the spot set. |
+| `export_research_data.py` | Dumps the full research dataset to timestamped CSVs under `data/exports/<timestamp>/` — the normalized tables (`profiles`, `sites`, `votes`, `vote_events`) plus the two convenience views (`votes_research`, `site_leaderboard`). Requires `SUPABASE_SERVICE_ROLE_KEY`. |
+| `run_history.py` | Shared helper (not a standalone script) used by the pipeline scripts to write `data/runs/` snapshots and manifests. |
+
+## Supabase database (survey data)
+
+The website records all its survey/vote data in Supabase (project `tinyhome-submissions`). Schema:
+
+| Table | Holds |
+|-------|-------|
+| `profiles` | One row per signed-up user: name, email, occupation, age/household/income ranges, goal, neighborhood, connection-to-Oakland roles, ownership preference. RLS on (each user sees only their own row). |
+| `sites` | One row per parking spot (synced from the geojson by `sync_sites_to_supabase.py`): coordinates, address, neighborhood, all amenity distances. |
+| `votes` | One current row per (user, spot): support/oppose + comment. Login required (`user_id` not null). |
+| `vote_events` | Append-only history of every vote cast / changed / retracted. |
+
+Two views join these for analysis: `vote_research_view` (one row per vote, every site + voter field attached — the master research table) and `site_vote_summary` (spots ranked by support, with who voted which way).
+
+**How to analyze:** run `export_research_data.py` to get the CSVs, then pivot / `groupby` offline in Excel / pandas / R. Export the master `votes_research.csv` once and derive rankings, demographic breakdowns, and amenity correlations from it — no need to hand-write SQL per question. Any custom question is still reachable by querying the interconnected tables directly (the views are just saved shortcuts for the common ones).
+
+**Service role key:** `sync_sites_to_supabase.py` and `export_research_data.py` both need `SUPABASE_SERVICE_ROLE_KEY` in `backend/.env` (Supabase dashboard → Settings → API → `service_role` secret) — the sites table's RLS blocks writes from the anon key, and the profiles table's RLS blocks reading other users' rows. This key is admin-only; never expose it in the frontend.
 
 ## output/
 
