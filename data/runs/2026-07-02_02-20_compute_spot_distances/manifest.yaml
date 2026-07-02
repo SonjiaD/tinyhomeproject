@@ -1,0 +1,16 @@
+script: compute_spot_distances
+generated_at: '2026-07-02T02:20:46.782251+00:00'
+spots_total: 46996
+fields_computed:
+- transit_dist
+- city_facility_dist
+- water_fountain_dist
+- streams_oakland_dist
+- grocery_dist
+within_block_variation:
+  blocks_with_6plus_spots: 3748
+  blocks_now_varying: 3747
+previous_run: null
+diff_vs_previous: null
+notes: 'recompute per-spot distances after hairpin overlap fix + directional edge
+  dedup + candidate spatial dedup (spot set changed: 84474 -> 46996)'

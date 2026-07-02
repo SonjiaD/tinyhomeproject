@@ -3,32 +3,45 @@
 generate_parking_polygons.py
 
 Run from any directory:
-    python data_pipeline/scripts/generate_parking_polygons.py
+    python data_pipeline/scripts/generate_parking_polygons.py [--notes "..."]
 
 Outputs:
-    data/polygons/parking_polygons_YYYY-MM-DD_HH-MM.geojson  (dated archive)
-    data/polygons/parking_polygons_latest.geojson             (latest tag — what the backend serves)
+    data/polygons/parking_polygons_latest.geojson       (latest tag — what the backend serves)
+    data/runs/<timestamp>_generate_parking_polygons/    (history snapshot + manifest.yaml)
 
 For each Oakland street edge that has a candidate parking point within 20 m,
 packs as many 30 ft x 10 ft (9.14 m x 3.05 m) rectangles as possible.
 
 Setback applied (California Daylighting Law AB 413 / CVC §22500):
   - 20 ft (6.10 m) from each block end (intersection / crosswalk clearance)
+
+Three overlap guards prevent spurious duplicate/overlapping spots:
+  - Duplicate directional OSM edges (a two-way block appears as both u->v and v->u
+    with identical geometry) are collapsed to one before packing.
+  - Within a single edge, a rectangle that would overlap one already placed on that
+    edge (either side) is skipped — handles streets that curve back near themselves
+    (hairpins/switchbacks), where two along-curve-distant positions can be
+    physically close enough that their independently-offset rectangles collide.
+  - A final global pass checks the finished spot set for overlaps across DIFFERENT
+    edges (e.g. near complex intersections) that the per-edge guard can't see.
 """
 
 import json
 import math
 import os
-import shutil
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
+
+import run_history
 
 ROOT = Path(__file__).resolve().parents[2]
 START_TAG = datetime.now().strftime("%Y-%m-%d_%H-%M")
+SCRIPT_NAME = "generate_parking_polygons"
 
 import geopandas as gpd
 from shapely.geometry import LineString, Polygon
+from shapely.strtree import STRtree
 
 try:
     import osmnx as ox
@@ -54,6 +67,12 @@ END_SETBACK  = 10.668  # 35 ft from OSM edge endpoint (= intersection centerline
 SNAP_RADIUS  = 20.0    # Max distance (m) to snap a candidate point to a street edge
 UTM_CRS      = 26910   # EPSG for UTM Zone 10N — metric operations
 WGS84_CRS    = 4326
+
+# Real end-to-end spots on the same edge touch at ~0 m²; anything above this is a
+# genuine overlap (e.g. a hairpin/switchback street looping back near itself, where
+# offsets computed from the local tangent at two different along-curve positions
+# land on top of each other even though those positions are far apart "along the road").
+OVERLAP_TOLERANCE_M2 = 0.5
 
 # Road types that never have on-street parking (freeways, ramps, etc.)
 NO_PARKING_TYPES = {
@@ -128,11 +147,19 @@ def pack_centres(seg_len: float) -> list:
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
+def _parse_notes(argv):
+    if "--notes" in argv:
+        i = argv.index("--notes")
+        if i + 1 < len(argv):
+            return argv[i + 1]
+    return ""
+
+
 def main():
+    notes = _parse_notes(sys.argv[1:])
     candidates_path = ROOT / "data" / "candidates" / "candidates_with_features.geojson"
-    dated_output    = ROOT / "data" / "polygons" / f"parking_polygons_{START_TAG}.geojson"
     latest_output   = ROOT / "data" / "polygons" / "parking_polygons_latest.geojson"
-    dated_output.parent.mkdir(parents=True, exist_ok=True)
+    latest_output.parent.mkdir(parents=True, exist_ok=True)
 
     # 1. Load candidate points ──────────────────────────────────────────────────
     print("Loading candidate points …")
@@ -144,6 +171,17 @@ def main():
     G = ox.graph_from_place("Oakland, California, USA", network_type="drive")
     edges = ox.graph_to_gdfs(G, nodes=False).reset_index().to_crs(UTM_CRS)
     print(f"  {len(edges):,} street edges downloaded")
+
+    # graph_from_place returns a directed graph, so a two-way block often appears as
+    # two edges (u->v and v->u) with identical geometry. Packing both independently
+    # would double every spot on that block. Same dedup pattern as
+    # add_manual_points.py:find_street_edges — collapse by unordered node pair.
+    n_edges_before_dedup = len(edges)
+    edges["_pair"] = edges.apply(lambda r: frozenset({r["u"], r["v"]}), axis=1)
+    edges = edges.drop_duplicates(subset="_pair").drop(columns="_pair").reset_index(drop=True)
+    n_duplicate_directional_edges = n_edges_before_dedup - len(edges)
+    print(f"  {n_duplicate_directional_edges:,} duplicate directional edges dropped "
+          f"({len(edges):,} unique physical edges remain)")
 
     # 3. Snap each candidate to its nearest street edge ─────────────────────────
     print("Snapping candidates to nearest edges …")
@@ -161,8 +199,10 @@ def main():
     # 4. Pack rectangles along each active edge ─────────────────────────────────
     print("Packing parking spots …")
     features = []
+    feature_rects_utm = []  # parallel to `features` — kept for the cross-edge pass below
     total = 0
     skipped_short = 0
+    skipped_overlap = 0
 
     for edge_idx in active_indices:
         edge_row = edges.iloc[edge_idx]
@@ -205,6 +245,12 @@ def main():
         if not left_cands.empty:  sides.append((-1, "L", left_cands))
         if not sides:             sides = [(+1, "R", cands_here)]  # fallback
 
+        # Rectangles already placed on this edge (both sides) — checked against so
+        # that a hairpin/switchback street (where a position near the start ends up
+        # physically close to one near the end, even though far apart "along the
+        # road") can't produce two independently-offset rectangles that overlap.
+        edge_accepted = []
+
         for side_sign, side_label, side_cands in sides:
             ref = side_cands.iloc[0]
 
@@ -226,6 +272,11 @@ def main():
                 cx = pt.x + lateral * side_sign * local_sin
                 cy = pt.y + lateral * (-side_sign) * local_cos
                 rect_utm = make_rectangle(cx, cy, SPOT_LENGTH, SPOT_WIDTH, local_bearing)
+
+                if any(rect_utm.intersection(r).area > OVERLAP_TOLERANCE_M2 for r in edge_accepted):
+                    skipped_overlap += 1
+                    continue
+                edge_accepted.append(rect_utm)
 
                 # Reproject to WGS84
                 rect_wgs = (
@@ -259,7 +310,31 @@ def main():
                         "homeless_service_dist":     _safe_float(ref.get("homeless_service_dist")),
                     },
                 })
+                feature_rects_utm.append(rect_utm)
                 total += 1
+
+    # 4.5 Cross-edge overlap guard ────────────────────────────────────────────
+    # The per-edge guard above only catches overlaps within a single OSM edge
+    # (e.g. a hairpin/switchback street looping back near itself). Two DIFFERENT
+    # edges — e.g. near a complex intersection — can still each independently
+    # place a spot that overlaps the other's. One global pass over the finished
+    # set catches those too.
+    print("Checking for cross-edge overlaps …")
+    tree = STRtree(feature_rects_utm)
+    keep = [True] * len(features)
+    skipped_cross_edge = 0
+    for i, rect in enumerate(feature_rects_utm):
+        if not keep[i]:
+            continue
+        for j in tree.query(rect):
+            j = int(j)
+            if j <= i or not keep[j]:
+                continue
+            if rect.intersection(feature_rects_utm[j]).area > OVERLAP_TOLERANCE_M2:
+                keep[j] = False
+                skipped_cross_edge += 1
+    features = [f for f, k in zip(features, keep) if k]
+    total = len(features)
 
     # 5. Write GeoJSON ───────────────────────────────────────────────────────────
     collection = {
@@ -267,14 +342,51 @@ def main():
         "total_spots": total,
         "features": features,
     }
-    with open(dated_output, "w") as f:
+    # Compact, no spaces — backend/app.py extracts total_spots via a brittle regex
+    # (r'"total_spots":(\d+)') that requires no space after the colon. Do not
+    # pretty-print this file.
+    with open(latest_output, "w") as f:
         json.dump(collection, f, separators=(",", ":"))
-    shutil.copy2(dated_output, latest_output)
 
     print(f"\n  Skipped {skipped_short:,} edges too short for even one spot")
+    print(f"  Skipped {skipped_overlap:,} spots that would have overlapped an already-placed spot on the same edge")
+    print(f"  Skipped {skipped_cross_edge:,} spots that overlapped a spot from a different edge")
     print(f"\nDone! {total:,} parking spots written.")
-    print(f"  Dated:  {dated_output}")
     print(f"  Latest: {latest_output}")
+
+    prev, prev_dir = run_history.previous_manifest(SCRIPT_NAME)
+    manifest = {
+        "script": SCRIPT_NAME,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "candidates_input": len(cands),
+        "osm": {
+            "street_edges_downloaded": n_edges_before_dedup,
+            "duplicate_directional_edges_dropped": n_duplicate_directional_edges,
+            "active_edges": len(active_indices),
+        },
+        "spots": {
+            "total": total,
+            "skipped_short_edges": skipped_short,
+            "skipped_overlapping_same_edge": skipped_overlap,
+            "skipped_overlapping_cross_edge": skipped_cross_edge,
+        },
+        "previous_run": None,
+        "diff_vs_previous": None,
+        "notes": notes,
+    }
+    if prev_dir is not None:
+        manifest["previous_run"] = f"data/runs/{prev_dir.name}/manifest.yaml"
+        prev_total = (prev or {}).get("spots", {}).get("total")
+        if prev_total is not None:
+            manifest["diff_vs_previous"] = {"spot_count_delta": total - prev_total}
+    run_dir = run_history.write_run(
+        SCRIPT_NAME, START_TAG, manifest,
+        snapshot_files={
+            "parking_polygons.geojson": latest_output,
+            "candidates_with_features.geojson": candidates_path,
+        },
+    )
+    print(f"  Run history: {run_dir}")
 
 
 if __name__ == "__main__":

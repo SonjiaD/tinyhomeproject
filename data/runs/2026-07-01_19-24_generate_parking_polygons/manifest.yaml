@@ -1,0 +1,17 @@
+script: generate_parking_polygons
+generated_at: '2026-07-02T02:26:17.305727+00:00'
+candidates_input: 7860
+osm:
+  street_edges_downloaded: 22144
+  duplicate_directional_edges_dropped: 9299
+  active_edges: 3141
+spots:
+  total: 46970
+  skipped_short_edges: 30
+  skipped_overlapping_same_edge: 428
+  skipped_overlapping_cross_edge: 26
+previous_run: data/runs/2026-07-01_19-17_generate_parking_polygons/manifest.yaml
+diff_vs_previous:
+  spot_count_delta: -26
+notes: add global cross-edge overlap guard (catches overlaps near complex intersections
+  that the per-edge guard misses)

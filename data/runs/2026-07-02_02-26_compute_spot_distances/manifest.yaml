@@ -1,0 +1,16 @@
+script: compute_spot_distances
+generated_at: '2026-07-02T02:26:55.051307+00:00'
+spots_total: 46970
+fields_computed:
+- transit_dist
+- city_facility_dist
+- water_fountain_dist
+- streams_oakland_dist
+- grocery_dist
+within_block_variation:
+  blocks_with_6plus_spots: 3747
+  blocks_now_varying: 3746
+previous_run: data/runs/2026-07-02_02-20_compute_spot_distances/manifest.yaml
+diff_vs_previous:
+  spot_count_delta: -26
+notes: recompute after adding global cross-edge overlap guard (46996 -> 46970 spots)

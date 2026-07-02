@@ -38,9 +38,17 @@ Committed data files used by the backend and data pipeline.
 Generated parking spot rectangles — derived from `candidates/`, not collected directly.
 
 - `parking_polygons_latest.geojson` — **the file the deployed website currently uses.** Committed to git so Render can access it.
-- `parking_polygons_YYYY-MM-DD_HH-MM.geojson` — dated archive copies saved each time the script runs. Gitignored (local machine only, for rollback).
 
 Each candidate point gets snapped to its nearest OSM street edge, then packed with 30 ft × 10 ft rectangles (one per physical parking space). These are what the map renders as colored boxes.
+
+Two overlap guards run during generation: duplicate directional OSM edges (a
+two-way street appears twice in OSM, once per direction) are collapsed to one
+before packing, and a rectangle that would significantly overlap one already
+placed on the same street edge is skipped. The second guard matters most on
+streets that curve back near themselves (hairpins/switchbacks, common in the
+Oakland hills) — two positions far apart "along the road" can be physically
+close enough that their independently-offset rectangles would otherwise land
+on top of each other.
 
 Each spot carries 4 proximity fields: `transit_dist`, `city_facility_dist`,
 `water_infrastructure_dist`, `homeless_service_dist`. As of `compute_spot_distances.py`
@@ -52,16 +60,24 @@ precisely).
 
 **Used by:** `backend/app.py` serves this via `/api/polygon_map`. The frontend fetches that endpoint to draw the parking rectangles on the map.
 
-### Versioning (Docker `:latest` analogy)
+### Versioning
+
+Every script that overwrites a committed data file (`merge_data.py`,
+`generate_parking_polygons.py`, `compute_spot_distances.py`) writes a run
+record to `data/runs/<timestamp>_<script>/` right after updating `_latest`:
 
 | Concept | This project |
 |---------|-------------|
-| Versioned image (`myimage:2026-05-22`) | `parking_polygons_2026-05-22_08-30.geojson` |
-| `:latest` tag | `parking_polygons_latest.geojson` |
-| Artifactory (stores all versions) | `data/polygons/` on your local machine |
-| What gets deployed | only `_latest` is committed to git |
+| `:latest` tag | `data/polygons/parking_polygons_latest.geojson` (what's deployed) |
+| Versioned snapshot | `data/runs/<timestamp>_<script>/parking_polygons.geojson` — local only, gitignored |
+| Change log entry | `data/runs/<timestamp>_<script>/manifest.yaml` — **committed**, documents counts (candidates, spots, dedup/overlap-guard stats) and a diff vs. that script's previous run |
 
-To roll back: copy any dated file over `_latest` and commit it.
+Each script keeps its own history lane (e.g. all `..._generate_parking_polygons`
+runs diff against each other) — manifests aren't compared across different
+scripts. To roll back the deployed data: copy a run folder's geojson snapshot
+over the corresponding `_latest` file and commit it (the snapshot won't exist
+locally unless you (or CI) ran that script on that machine — the manifest
+alone doesn't carry the full geometry).
 
 ---
 
@@ -87,9 +103,11 @@ stream segments are LineStrings frequently split at confluences/bridges, so near
 segments are legitimately distinct, not duplicates.
 
 Only the 5 "latest" files are committed; dated archives (`archive/YYYY-MM-DD_HH-MM/`)
-are local-only, same convention as `candidates/` and `polygons/`. Rerun
-`fetch_osm_features.py` periodically to keep these current — it's idempotent, fully
-overwriting each category with a fresh Overpass fetch.
+are local-only. (This predates and is separate from the `data/runs/` history
+mechanism used by `candidates/` and `polygons/` — `fetch_osm_features.py` isn't part
+of the regular merge → generate → compute-distances pipeline, so it keeps its own
+simpler archive pattern.) Rerun `fetch_osm_features.py` periodically to keep these
+current — it's idempotent, fully overwriting each category with a fresh Overpass fetch.
 
 **Used by:** `data_pipeline/scripts/compute_spot_distances.py` reads these files +
 `data/polygons/parking_polygons_latest.geojson`, and computes `transit_dist`,

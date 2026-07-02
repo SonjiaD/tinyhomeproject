@@ -1,0 +1,14 @@
+script: generate_parking_polygons
+generated_at: '2026-07-02T02:19:40.181018+00:00'
+candidates_input: 7860
+osm:
+  street_edges_downloaded: 22144
+  duplicate_directional_edges_dropped: 9299
+  active_edges: 3141
+spots:
+  total: 46996
+  skipped_short_edges: 30
+  skipped_overlapping: 428
+previous_run: null
+diff_vs_previous: null
+notes: fix hairpin self-overlap + duplicate directional OSM edges

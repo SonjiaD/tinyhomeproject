@@ -26,19 +26,20 @@ generate_parking_polygons.py copies onto polygon properties — have no OSM equi
 are left completely untouched (verified via an exact-equality check before writing).
 
 Usage:
-    python data_pipeline/scripts/compute_spot_distances.py
+    python data_pipeline/scripts/compute_spot_distances.py [--notes "..."]
 
 Outputs:
-    data/polygons/parking_polygons_YYYY-MM-DD_HH-MM.geojson  (dated archive, gitignored)
-    data/polygons/parking_polygons_latest.geojson             (latest, committed — what /api/polygon_map serves)
+    data/polygons/parking_polygons_latest.geojson         (latest, committed — what /api/polygon_map serves)
+    data/runs/<timestamp>_compute_spot_distances/         (history snapshot + manifest.yaml)
 """
 
 import json
-import shutil
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+
+import run_history
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -47,6 +48,7 @@ POLYGONS_DIR = ROOT / "data" / "polygons"
 LATEST_FILE = POLYGONS_DIR / "parking_polygons_latest.geojson"
 FEATURES_DIR = ROOT / "data" / "features"
 UTM_CRS = 26910
+SCRIPT_NAME = "compute_spot_distances"
 
 # feature layer filename -> distance field it feeds
 FEATURE_SOURCES = {
@@ -265,12 +267,8 @@ def main():
           f"6+ spots now show transit_dist varying by more than 1m across their spots "
           f"(previously identical for every spot on a block).")
 
-    # Archive current version before overwriting — same pattern as merge_data.py.
     start_tag = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M")
-    dated_output = POLYGONS_DIR / f"parking_polygons_{start_tag}.geojson"
     POLYGONS_DIR.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(LATEST_FILE, dated_output)
-    print(f"\nArchived current version to: {dated_output.name}")
 
     updated_geojson = {
         "type": "FeatureCollection",
@@ -285,6 +283,32 @@ def main():
 
     print(f"Computed {len(FEATURE_SOURCES)} fields for {len(existing_features)} individual spots.")
     print(f"Updated latest: {LATEST_FILE.name}")
+
+    notes = sys.argv[sys.argv.index("--notes") + 1] if "--notes" in sys.argv else ""
+    prev, prev_dir = run_history.previous_manifest(SCRIPT_NAME)
+    manifest = {
+        "script": SCRIPT_NAME,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "spots_total": len(existing_features),
+        "fields_computed": list(FEATURE_SOURCES.values()),
+        "within_block_variation": {
+            "blocks_with_6plus_spots": len(multi_spot_blocks),
+            "blocks_now_varying": varying,
+        },
+        "previous_run": None,
+        "diff_vs_previous": None,
+        "notes": notes,
+    }
+    if prev_dir is not None:
+        manifest["previous_run"] = f"data/runs/{prev_dir.name}/manifest.yaml"
+        prev_total = (prev or {}).get("spots_total")
+        if prev_total is not None:
+            manifest["diff_vs_previous"] = {"spot_count_delta": len(existing_features) - prev_total}
+    run_dir = run_history.write_run(
+        SCRIPT_NAME, start_tag, manifest,
+        snapshot_files={"parking_polygons.geojson": LATEST_FILE},
+    )
+    print(f"Run history: {run_dir}")
 
 
 if __name__ == "__main__":

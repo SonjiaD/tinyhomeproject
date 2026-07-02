@@ -1,0 +1,14 @@
+script: merge_data
+generated_at: '2026-07-02T02:17:07.181975+00:00'
+scrape_source: spotangels_2026-05.geojson
+candidates:
+  updated: 5427
+  kept: 3540
+  added: 0
+  total_after_id_merge: 8967
+  spatial_duplicates_removed: 1107
+  total_after_dedup: 7860
+previous_run: null
+diff_vs_previous: null
+notes: 'spatial dedup fix: collapse near-duplicate candidates from combined gov+SpotAngels
+  sources'

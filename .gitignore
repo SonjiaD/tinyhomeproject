@@ -22,10 +22,14 @@ frontend/.env.local
 data_pipeline/output/
 data_pipeline/spotangel_output/
 
-# Dated polygon archives (local history only; parking_polygons_latest.geojson is committed)
-data/polygons/parking_polygons_2*.geojson
+# Pipeline run history — data/runs/<timestamp>_<script>/manifest.yaml is committed
+# (small, durable log of what each run changed); the full geojson snapshots alongside
+# each manifest are local-only.
+data/runs/*/*.geojson
 
-# Dated candidates archives (local history only; candidates_with_features.geojson is committed)
+# Legacy dated archives from before the data/runs/ history mechanism above — local
+# machine only, kept ignored so pre-existing rollback copies aren't force-surfaced.
+data/polygons/parking_polygons_2*.geojson
 data/candidates/candidates_with_features_2*.geojson
 
 # Dated OSM feature-layer archives (local history only; the 5 "latest" files in
