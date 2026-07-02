@@ -2,7 +2,9 @@
 Computes transit_dist, city_facility_dist, water_fountain_dist, streams_oakland_dist,
 and grocery_dist (new) for every INDIVIDUAL parking spot in
 data/polygons/parking_polygons_latest.geojson (84,474 spots), using the fresh OSM feature
-layers saved by fetch_osm_features.py under data/features/.
+layers saved by fetch_osm_features.py under data/features/. Also captures each nearest
+feature's own coordinates (e.g. transit_nearest_lat/transit_nearest_lon) so the frontend
+can drop a pin at the actual nearest amenity, not just show a distance number.
 
 This is step 2 of 2. Run fetch_osm_features.py first.
 
@@ -60,43 +62,93 @@ FEATURE_SOURCES = {
 UNTOUCHED_FIELDS = ["water_infrastructure_dist", "homeless_service_dist"]
 
 
+def _nearest_locations_wgs84(joined, feats_utm, points_index):
+    """Given a sjoin_nearest result (with an index_right column pointing into
+    feats_utm), return the matched feature's location reprojected back to WGS84
+    (lat, lon) per point — for pins on the map. `feats_utm` must have its original
+    geometry (already reduced to centroid upstream if the caller wants that)."""
+    import pandas as pd
+
+    feats_wgs84 = feats_utm.to_crs(4326)
+    lats, lons = [], []
+    for idx in points_index:
+        right_idx = joined.loc[idx, "index_right"]
+        if pd.isna(right_idx):
+            lats.append(None)
+            lons.append(None)
+            continue
+        geom = feats_wgs84.geometry.iloc[int(right_idx)]
+        lats.append(geom.y)
+        lons.append(geom.x)
+    return lats, lons
+
+
 def nearest_distances_m(points_gdf, features_gdf, utm_crs):
-    """Distance in meters from each point to its nearest feature. Returns a list of
-    floats, or a list of `None` if `features_gdf` is empty. Polygons/lines are reduced
-    to their centroid first — fine for point-like categories (parks, grocery, transit,
-    water fountains) at city scale. (Verbatim from add_manual_points.py.)"""
+    """Distance in meters from each point to its nearest feature, plus that feature's
+    own WGS84 (lat, lon) — for drawing a pin at the nearest feature's real location.
+    Returns (dists, lats, lons), each a list of floats/None if `features_gdf` is empty.
+    Polygons/lines are reduced to their centroid first — fine for point-like categories
+    (parks, grocery, transit, water fountains) at city scale. (Distance logic verbatim
+    from add_manual_points.py; location capture added on top.)"""
     import geopandas as gpd
 
     if features_gdf.empty:
-        return [None] * len(points_gdf)
+        return [None] * len(points_gdf), [None] * len(points_gdf), [None] * len(points_gdf)
 
     pts_utm = points_gdf.to_crs(utm_crs)
     feats_utm = features_gdf.to_crs(utm_crs)
     feats_utm = feats_utm[feats_utm.geometry.notnull()]
     feats_utm["geometry"] = feats_utm.geometry.centroid
+    feats_utm = feats_utm.reset_index(drop=True)
 
     joined = gpd.sjoin_nearest(pts_utm, feats_utm[["geometry"]], how="left", distance_col="_d")
     joined = joined[~joined.index.duplicated(keep="first")]
-    return joined.loc[points_gdf.index, "_d"].tolist()
+    joined = joined.loc[points_gdf.index]
+
+    dists = joined["_d"].tolist()
+    lats, lons = _nearest_locations_wgs84(joined, feats_utm, points_gdf.index)
+    return dists, lats, lons
 
 
 def nearest_distances_m_precise(points_gdf, features_gdf, utm_crs):
     """Like nearest_distances_m, but does NOT collapse features to centroids first —
     used for streams.geojson, where features are LineStrings and reducing to a centroid
     would distort distance for long/curved segments. sjoin_nearest computes true
-    nearest-point-on-geometry distance directly for any geometry type."""
+    nearest-point-on-geometry distance directly for any geometry type. The "pin location"
+    returned for a stream is the nearest point ON the matched segment (not its centroid),
+    computed via shapely's nearest-point-on-line."""
     import geopandas as gpd
+    import pandas as pd
+    from shapely.ops import nearest_points
 
     if features_gdf.empty:
-        return [None] * len(points_gdf)
+        return [None] * len(points_gdf), [None] * len(points_gdf), [None] * len(points_gdf)
 
     pts_utm = points_gdf.to_crs(utm_crs)
     feats_utm = features_gdf.to_crs(utm_crs)
     feats_utm = feats_utm[feats_utm.geometry.notnull()]
+    feats_utm = feats_utm.reset_index(drop=True)
 
     joined = gpd.sjoin_nearest(pts_utm, feats_utm[["geometry"]], how="left", distance_col="_d")
     joined = joined[~joined.index.duplicated(keep="first")]
-    return joined.loc[points_gdf.index, "_d"].tolist()
+    joined = joined.loc[points_gdf.index]
+
+    dists = joined["_d"].tolist()
+
+    lats, lons = [], []
+    for idx in points_gdf.index:
+        right_idx = joined.loc[idx, "index_right"]
+        if pd.isna(right_idx):
+            lats.append(None)
+            lons.append(None)
+            continue
+        pt = pts_utm.geometry.loc[idx]
+        line = feats_utm.geometry.iloc[int(right_idx)]
+        nearest_on_line = nearest_points(pt, line)[1]
+        nearest_wgs84 = gpd.GeoSeries([nearest_on_line], crs=utm_crs).to_crs(4326).iloc[0]
+        lats.append(nearest_wgs84.y)
+        lons.append(nearest_wgs84.x)
+    return dists, lats, lons
 
 
 def load_feature_layer(filename):
@@ -141,19 +193,27 @@ def main():
     }
 
     computed = {}
+    computed_latlon = {}
     for filename, field in FEATURE_SOURCES.items():
+        prefix = field[:-len("_dist")] if field.endswith("_dist") else field
+        lat_field, lon_field = f"{prefix}_nearest_lat", f"{prefix}_nearest_lon"
+
         print(f"\nComputing {field} from {filename} …")
         layer = load_feature_layer(filename)
         if layer is None:
             computed[field] = [None] * len(existing_features)
+            computed_latlon[lat_field] = [None] * len(existing_features)
+            computed_latlon[lon_field] = [None] * len(existing_features)
             continue
 
         if filename == "streams.geojson":
-            dists = nearest_distances_m_precise(spot_gdf, layer, UTM_CRS)
+            dists, lats, lons = nearest_distances_m_precise(spot_gdf, layer, UTM_CRS)
         else:
-            dists = nearest_distances_m(spot_gdf, layer, UTM_CRS)
+            dists, lats, lons = nearest_distances_m(spot_gdf, layer, UTM_CRS)
 
         computed[field] = dists
+        computed_latlon[lat_field] = lats
+        computed_latlon[lon_field] = lons
         valid = [d for d in dists if d is not None]
         if valid:
             print(f"  {len(valid)}/{len(dists)} spots matched; "
@@ -182,6 +242,8 @@ def main():
     for i, feature in enumerate(existing_features):
         for field in FEATURE_SOURCES.values():
             feature["properties"][field] = computed[field][i]
+        for field in computed_latlon:
+            feature["properties"][field] = computed_latlon[field][i]
 
     # Integrity check: the 2 untouched fields must be exactly unchanged.
     for i, feature in enumerate(existing_features):

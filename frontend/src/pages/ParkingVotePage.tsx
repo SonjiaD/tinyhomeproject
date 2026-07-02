@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { MapContainer, TileLayer, useMap, useMapEvents, Circle, Rectangle, Polyline, Polygon, CircleMarker } from 'react-leaflet'
+import { MapContainer, TileLayer, useMap, useMapEvents, Circle, Rectangle, Polyline, Polygon, CircleMarker, Marker, Tooltip } from 'react-leaflet'
 import L, { LatLngBounds, LatLng } from 'leaflet'
 import axios from 'axios'
 import confetti from 'canvas-confetti'
@@ -79,7 +79,90 @@ function featureToVoteSite(props: any, coords: number[][]): VoteSite {
     grocery_dist: props.grocery_dist ?? 0,
     water_fountain_dist: props.water_fountain_dist ?? 0,
     streams_oakland_dist: props.streams_oakland_dist ?? 0,
+    transit_nearest_lat: props.transit_nearest_lat ?? null,
+    transit_nearest_lon: props.transit_nearest_lon ?? null,
+    city_facility_nearest_lat: props.city_facility_nearest_lat ?? null,
+    city_facility_nearest_lon: props.city_facility_nearest_lon ?? null,
+    water_fountain_nearest_lat: props.water_fountain_nearest_lat ?? null,
+    water_fountain_nearest_lon: props.water_fountain_nearest_lon ?? null,
+    streams_oakland_nearest_lat: props.streams_oakland_nearest_lat ?? null,
+    streams_oakland_nearest_lon: props.streams_oakland_nearest_lon ?? null,
+    grocery_nearest_lat: props.grocery_nearest_lat ?? null,
+    grocery_nearest_lon: props.grocery_nearest_lon ?? null,
   }
+}
+
+// ── Amenity pins: show the actual nearest transit/park/grocery/etc. on the map ────
+// when a spot is selected, not just its distance as a number.
+const PIN_GLYPHS: Record<string, string> = {
+  transit: '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="4" y="5" width="16" height="12" rx="2"/><circle cx="8" cy="19" r="1.4" fill="white" stroke="none"/><circle cx="16" cy="19" r="1.4" fill="white" stroke="none"/><line x1="4" y1="10" x2="20" y2="10"/></svg>',
+  parks: '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="9" r="6"/><line x1="12" y1="15" x2="12" y2="21"/></svg>',
+  grocery: '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M4 5h2l2 11h10l2-8H7"/><circle cx="9" cy="19" r="1.3" fill="white" stroke="none"/><circle cx="16" cy="19" r="1.3" fill="white" stroke="none"/></svg>',
+  water_fountain: '<svg viewBox="0 0 24 24" fill="white" stroke="none"><path d="M12 3c-3 4-5 7-5 10a5 5 0 0010 0c0-3-2-6-5-10z"/></svg>',
+  streams: '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M2 9c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M2 15c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></svg>',
+}
+
+function pinDivIcon(colorHex: string, glyphSvg: string): L.DivIcon {
+  return L.divIcon({
+    className: '',
+    html: `<div style="background:${colorHex};width:28px;height:28px;border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;
+      box-shadow:0 1px 4px rgba(0,0,0,0.4);border:2px solid white;">
+      <div style="transform:rotate(45deg);width:15px;height:15px;">${glyphSvg}</div>
+    </div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+  })
+}
+
+const SELECTED_SPOT_ICON = pinDivIcon('#f97316', '<svg viewBox="0 0 24 24" fill="white" stroke="none"><circle cx="12" cy="12" r="5"/></svg>')
+
+const AMENITY_PIN_CONFIG: { key: string; label: string; latField: keyof VoteSite; lonField: keyof VoteSite; icon: L.DivIcon }[] = [
+  { key: 'transit', label: 'Transit', latField: 'transit_nearest_lat', lonField: 'transit_nearest_lon', icon: pinDivIcon('#2563eb', PIN_GLYPHS.transit) },
+  { key: 'parks', label: 'Parks', latField: 'city_facility_nearest_lat', lonField: 'city_facility_nearest_lon', icon: pinDivIcon('#16a34a', PIN_GLYPHS.parks) },
+  { key: 'grocery', label: 'Grocery', latField: 'grocery_nearest_lat', lonField: 'grocery_nearest_lon', icon: pinDivIcon('#c2410c', PIN_GLYPHS.grocery) },
+  { key: 'water_fountain', label: 'Water Fountain', latField: 'water_fountain_nearest_lat', lonField: 'water_fountain_nearest_lon', icon: pinDivIcon('#0891b2', PIN_GLYPHS.water_fountain) },
+  { key: 'streams', label: 'Stream', latField: 'streams_oakland_nearest_lat', lonField: 'streams_oakland_nearest_lon', icon: pinDivIcon('#0d9488', PIN_GLYPHS.streams) },
+]
+
+function AmenityPins({ site }: { site: VoteSite | null }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!site) return
+    const points: [number, number][] = [[site.lat, site.lon]]
+    for (const cat of AMENITY_PIN_CONFIG) {
+      const lat = site[cat.latField] as number | null
+      const lon = site[cat.lonField] as number | null
+      if (lat != null && lon != null) points.push([lat, lon])
+    }
+    if (points.length > 1) {
+      map.flyToBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 17, duration: 0.6 })
+    } else {
+      map.flyTo([site.lat, site.lon], Math.max(map.getZoom(), 17), { duration: 0.6 })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [site?.id])
+
+  if (!site) return null
+
+  return (
+    <>
+      <Marker position={[site.lat, site.lon]} icon={SELECTED_SPOT_ICON} zIndexOffset={1000}>
+        <Tooltip direction="top" offset={[0, -28]}>Selected spot</Tooltip>
+      </Marker>
+      {AMENITY_PIN_CONFIG.map(cat => {
+        const lat = site[cat.latField] as number | null
+        const lon = site[cat.lonField] as number | null
+        if (lat == null || lon == null) return null
+        return (
+          <Marker key={cat.key} position={[lat, lon]} icon={cat.icon}>
+            <Tooltip direction="top" offset={[0, -28]}>{cat.label}</Tooltip>
+          </Marker>
+        )
+      })}
+    </>
+  )
 }
 
 // ── Haversine distance (metres) ───────────────────────────────────────────────
@@ -1297,6 +1380,8 @@ export default function ParkingVotePage() {
               onReady={() => setLoading(false)}
             />
           )}
+
+          <AmenityPins site={selectedSite} />
 
           {cityBoundary && (
             <Polygon
