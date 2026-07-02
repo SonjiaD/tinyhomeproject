@@ -5,19 +5,32 @@ export interface DistanceBounds {
   max: number
 }
 
-const DIST_FIELDS = [
+export const DIST_FIELDS = [
   'transit_dist',
   'water_infrastructure_dist',
   'city_facility_dist',
   'homeless_service_dist',
 ] as const
 
+// Fields with no OSM equivalent that drive computeSiteScore stay on DIST_FIELDS only, so
+// VotePage's composite score is unaffected. These 3 power the SitePanel amenity bars only.
+export const DISPLAY_ONLY_FIELDS = [
+  'water_fountain_dist',
+  'streams_oakland_dist',
+  'grocery_dist',
+] as const
+
 type DistField = typeof DIST_FIELDS[number]
 
-export function computeAllBounds(sites: VoteSite[]): Record<DistField, DistanceBounds> {
-  const result = {} as Record<DistField, DistanceBounds>
-  for (const field of DIST_FIELDS) {
-    const vals = sites.map(s => s[field]).filter(v => v != null && isFinite(v))
+export function computeAllBounds(
+  sites: VoteSite[],
+  fields: readonly string[] = DIST_FIELDS,
+): Record<string, DistanceBounds> {
+  const result: Record<string, DistanceBounds> = {}
+  for (const field of fields) {
+    const vals = sites
+      .map(s => (s as unknown as Record<string, number>)[field])
+      .filter(v => v != null && isFinite(v))
     result[field] = {
       min: Math.min(...vals),
       max: Math.max(...vals),

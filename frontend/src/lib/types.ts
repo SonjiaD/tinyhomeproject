@@ -7,6 +7,9 @@ export interface VoteSite {
   water_infrastructure_dist: number
   city_facility_dist: number
   homeless_service_dist: number
+  grocery_dist: number
+  water_fountain_dist: number
+  streams_oakland_dist: number
 }
 
 export interface VoteTally {
@@ -28,4 +31,7 @@ export interface ParkingPolygon {
   water_infrastructure_dist: number
   city_facility_dist: number
   homeless_service_dist: number
+  grocery_dist: number
+  water_fountain_dist: number
+  streams_oakland_dist: number
 }

@@ -5,7 +5,7 @@ import axios from 'axios'
 import confetti from 'canvas-confetti'
 import type { VoteSite, VoteTally, VoteCountsMap } from '../lib/types'
 import { useParkingCount } from '../lib/useParkingCount'
-import { computeAllBounds, type DistanceBounds } from '../lib/normalization'
+import { computeAllBounds, DIST_FIELDS, DISPLAY_ONLY_FIELDS, type DistanceBounds } from '../lib/normalization'
 import { getVoteColor } from '../lib/voteColors'
 import { Share2 } from 'lucide-react'
 import { SitePanel } from '../components/SitePanel'
@@ -76,6 +76,9 @@ function featureToVoteSite(props: any, coords: number[][]): VoteSite {
     water_infrastructure_dist: props.water_infrastructure_dist ?? 0,
     city_facility_dist: props.city_facility_dist ?? 0,
     homeless_service_dist: props.homeless_service_dist ?? 0,
+    grocery_dist: props.grocery_dist ?? 0,
+    water_fountain_dist: props.water_fountain_dist ?? 0,
+    streams_oakland_dist: props.streams_oakland_dist ?? 0,
   }
 }
 
@@ -723,9 +726,12 @@ export default function ParkingVotePage() {
         water_infrastructure_dist: f.properties.water_infrastructure_dist ?? 0,
         city_facility_dist: f.properties.city_facility_dist ?? 0,
         homeless_service_dist: f.properties.homeless_service_dist ?? 0,
+        grocery_dist: f.properties.grocery_dist ?? 0,
+        water_fountain_dist: f.properties.water_fountain_dist ?? 0,
+        streams_oakland_dist: f.properties.streams_oakland_dist ?? 0,
       }))
       setRawGeojson(geojson)
-      setAllBounds(computeAllBounds(sitesForBounds))
+      setAllBounds(computeAllBounds(sitesForBounds, [...DIST_FIELDS, ...DISPLAY_ONLY_FIELDS]))
       setVoteCounts(voteRes.data || {})
     }
     load()

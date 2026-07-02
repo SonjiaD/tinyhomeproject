@@ -172,6 +172,9 @@ export function SitePanel({ site, allBounds, voteTally, myVote, userId, onClose,
               <div className="space-y-3">
                 <AmenityBar label="Transit Access" rawMeters={site.transit_dist} bounds={allBounds['transit_dist']} />
                 <AmenityBar label="Parks" rawMeters={site.city_facility_dist} bounds={allBounds['city_facility_dist']} />
+                <AmenityBar label="Grocery Access" rawMeters={site.grocery_dist} bounds={allBounds['grocery_dist']} />
+                <AmenityBar label="Water Fountains" rawMeters={site.water_fountain_dist} bounds={allBounds['water_fountain_dist']} />
+                <AmenityBar label="Streams" rawMeters={site.streams_oakland_dist} bounds={allBounds['streams_oakland_dist']} />
               </div>
             </div>
 

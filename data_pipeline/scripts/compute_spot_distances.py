@@ -216,7 +216,10 @@ def main():
         "features": existing_features,
     }
     with open(LATEST_FILE, "w", encoding="utf-8") as f:
-        json.dump(updated_geojson, f, indent=2, ensure_ascii=False)
+        # Compact, no spaces — must match generate_parking_polygons.py's format exactly.
+        # backend/app.py extracts total_spots via a brittle regex (r'"total_spots":(\d+)')
+        # that requires no space after the colon; pretty-printing here breaks that parse.
+        json.dump(updated_geojson, f, separators=(",", ":"))
 
     print(f"Computed {len(FEATURE_SOURCES)} fields for {len(existing_features)} individual spots.")
     print(f"Updated latest: {LATEST_FILE.name}")
