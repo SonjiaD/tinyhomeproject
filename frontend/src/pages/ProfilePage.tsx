@@ -44,7 +44,7 @@ const ROLES = [
   { value: 'used_to_live',  label: 'Used to live there',         Icon: History },
   { value: 'want_to_move',  label: 'Want to move there',         Icon: Heart },
   { value: 'work_there',    label: 'Work there',                 Icon: Briefcase },
-  { value: 'oakland_fan',   label: 'Oakland fan / live nearby',  Icon: MapPin },
+  { value: 'oakland_fan',   label: 'Fan / live nearby',          Icon: MapPin },
   { value: 'other',         label: 'Other',                      Icon: Circle },
 ]
 

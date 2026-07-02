@@ -63,7 +63,7 @@ const ROLES = [
   { value: 'used_to_live',  label: 'Used to live there',     Icon: History },
   { value: 'want_to_move',  label: 'Want to move there',     Icon: Heart },
   { value: 'work_there',    label: 'Work there',             Icon: Briefcase },
-  { value: 'oakland_fan',   label: 'Oakland fan / live nearby', Icon: MapPin },
+  { value: 'oakland_fan',   label: 'Fan / live nearby',      Icon: MapPin },
   { value: 'other',         label: 'Other',                  Icon: Circle },
 ]
 
@@ -590,7 +590,7 @@ export default function OnboardingGoalPage() {
   ]
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ background: '#0f2a2a' }}>
+    <div className="relative min-h-screen shrink-0 flex flex-col items-center justify-center px-6 py-12" style={{ background: '#0f2a2a' }}>
       {/* Persistent concept thumbnail */}
       <div className="hidden sm:flex absolute top-6 right-6 items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-2 pr-4 max-w-xs">
         <img
