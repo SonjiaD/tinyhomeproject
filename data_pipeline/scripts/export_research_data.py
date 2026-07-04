@@ -77,6 +77,15 @@ def fetch_all(client, table, order_col):
     return rows
 
 
+def _csv_safe(value):
+    """Neutralize CSV/formula injection. User-entered text (e.g. vote comments) that begins
+    with a formula trigger would execute when the CSV is opened in Excel/Sheets. Prefixing
+    with a single quote makes spreadsheets treat the cell as literal text."""
+    if isinstance(value, str) and value and value[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value
+
+
 def write_csv(path, rows):
     """Write rows (list of dicts) to CSV. Union of all keys as header (stable order)."""
     if not rows:
@@ -91,7 +100,7 @@ def write_csv(path, rows):
         w = csv.DictWriter(f, fieldnames=header)
         w.writeheader()
         for r in rows:
-            w.writerow({k: r.get(k) for k in header})
+            w.writerow({k: _csv_safe(r.get(k)) for k in header})
     return len(rows)
 
 

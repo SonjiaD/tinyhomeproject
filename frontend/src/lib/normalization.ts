@@ -28,13 +28,20 @@ export function computeAllBounds(
 ): Record<string, DistanceBounds> {
   const result: Record<string, DistanceBounds> = {}
   for (const field of fields) {
-    const vals = sites
-      .map(s => (s as unknown as Record<string, number>)[field])
-      .filter(v => v != null && isFinite(v))
-    result[field] = {
-      min: Math.min(...vals),
-      max: Math.max(...vals),
+    // Single pass instead of Math.min(...vals): spreading ~47k args can throw
+    // "RangeError: Maximum call stack size exceeded" (notably in Safari).
+    let min = Infinity
+    let max = -Infinity
+    let count = 0
+    for (const s of sites) {
+      const v = (s as unknown as Record<string, number>)[field]
+      if (v == null || !isFinite(v)) continue
+      if (v < min) min = v
+      if (v > max) max = v
+      count++
     }
+    // No finite values → neutral bounds (min === max makes normalize() return 1, not NaN).
+    result[field] = count ? { min, max } : { min: 0, max: 0 }
   }
   return result
 }

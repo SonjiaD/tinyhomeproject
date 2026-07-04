@@ -125,6 +125,10 @@ export default function ProfilePage() {
   const [loaded, setLoaded] = useState(false)
   const skipNextSave = useRef(true)
   const hasLoadedProfile = useRef(false)
+  // Holds the latest not-yet-fired debounced save, so we can flush it if the user
+  // navigates away within the debounce window (otherwise the last edit is lost).
+  const pendingSaveRef = useRef<null | (() => void)>(null)
+  const mountedRef = useRef(true)
 
   // Only ever pull the server profile into local state once, so our own debounced saves
   // (which call refreshProfile and change the `profile` reference) don't look like edits
@@ -155,7 +159,12 @@ export default function ProfilePage() {
     if (!goal || !user) return
     setSaving(true)
     setError('')
-    const timeout = setTimeout(async () => {
+
+    let fired = false
+    const doSave = async () => {
+      if (fired) return           // guard against double-fire (timeout + unmount flush)
+      fired = true
+      pendingSaveRef.current = null
       const { error } = await supabase.from('profiles').upsert({
         id: user.id,
         email: user.email ?? null,
@@ -170,6 +179,7 @@ export default function ProfilePage() {
         household_type: householdType || null,
         income_range: incomeRange || null,
       })
+      if (!mountedRef.current) return   // navigated away: save still completes, skip UI updates
       setSaving(false)
       if (error) {
         setError('Could not save your profile. Please try again.')
@@ -178,9 +188,14 @@ export default function ProfilePage() {
         await refreshProfile()
         setTimeout(() => setSaved(false), 2000)
       }
-    }, 700)
+    }
+    pendingSaveRef.current = doSave
+    const timeout = setTimeout(doSave, 700)
     return () => clearTimeout(timeout)
   }, [loaded, goal, roles, neighborhood, ownershipModel, ownershipOther, occupation, ageRange, householdType, incomeRange])
+
+  // Flush a pending debounced save on unmount so a quick edit-then-navigate isn't lost.
+  useEffect(() => () => { mountedRef.current = false; pendingSaveRef.current?.() }, [])
 
   const filteredNeighborhoods = neighborhoodSearch.length > 0
     ? NEIGHBORHOODS.filter(n => n.toLowerCase().includes(neighborhoodSearch.toLowerCase()))

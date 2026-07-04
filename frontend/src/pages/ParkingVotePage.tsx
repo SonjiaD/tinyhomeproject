@@ -734,7 +734,9 @@ export default function ParkingVotePage() {
     toastTimer.current = setTimeout(() => setToast(null), 3500)
   }
 
-  function getMilestonesKey() { return `celebrated_milestones_${userGoal}` }
+  // Namespaced by user (like parkingVotes_v1) so a second account on a shared machine
+  // doesn't inherit the first user's already-fired milestones and miss its own celebrations.
+  function getMilestonesKey() { return `celebrated_milestones_${user?.id ?? 'anon'}_${userGoal}` }
 
   function getFiredMilestones(): string[] {
     try { return JSON.parse(localStorage.getItem(getMilestonesKey()) ?? '[]') } catch { return [] }
@@ -794,6 +796,28 @@ export default function ParkingVotePage() {
     } catch { /* non-critical */ }
   }, [])
 
+  // Re-sync all vote state from the server. Used after a batch partially fails (some
+  // chunks committed, some didn't): rather than trying to precisely unwind N committed
+  // chunks, we pull authoritative truth so the UI matches the DB regardless of how far
+  // the batch got. Leaves optimistic state in place if the reconcile fetch itself fails
+  // (the 30s poll is the last resort).
+  const reconcileVotesFromServer = useCallback(async () => {
+    if (!user?.id) return
+    try {
+      const [mineRes, countsRes] = await Promise.all([
+        axios.get(`${API}/api/votes/mine`, { params: { user_id: user.id } }),
+        axios.get(`${API}/api/votes`),
+      ])
+      const mine = (mineRes.data ?? {}) as Record<string, boolean>
+      setUserVotes(mine)
+      const all = JSON.parse(localStorage.getItem('parkingVotes_v1') || '{}') as Record<string, Record<string, boolean>>
+      all[user.id] = mine
+      localStorage.setItem('parkingVotes_v1', JSON.stringify(all))
+      setVoteCounts(countsRes.data || {})
+    } catch { /* keep optimistic state; the poll will eventually reconcile */ }
+    fetchCommunityTotal()
+  }, [user?.id, fetchCommunityTotal])
+
   // Poll community total every 30s
   useEffect(() => {
     fetchCommunityTotal()
@@ -814,12 +838,28 @@ export default function ParkingVotePage() {
         if (all[uid]) setUserVotes(all[uid])
       } catch { /* ignore malformed cache */ }
     }
-    // 2. Authoritative hydrate from the DB, then refresh the local cache
+    // 2. Authoritative hydrate from the DB, then refresh the local cache.
     let cancelled = false
+    const readLocalMine = (): Record<string, boolean> => {
+      try { return (JSON.parse(localStorage.getItem('parkingVotes_v1') || '{}') as any)[uid] ?? {} }
+      catch { return {} }
+    }
+    // Snapshot local votes at fetch-start. The GET reflects the DB as of now; any vote the
+    // user casts/undoes (single or batch — all write localStorage) while it's in flight would
+    // otherwise be clobbered by the stale snapshot. We detect those by diffing against this.
+    const startSnapshot = readLocalMine()
     axios.get(`${API}/api/votes/mine`, { params: { user_id: uid } })
       .then(res => {
         if (cancelled) return
-        const mine = (res.data ?? {}) as Record<string, boolean>
+        const mine = { ...(res.data ?? {}) } as Record<string, boolean>
+        const currentLocal = readLocalMine()
+        // Re-apply changes made during the fetch window (local wins for those keys only).
+        for (const id of new Set([...Object.keys(startSnapshot), ...Object.keys(currentLocal)])) {
+          if (startSnapshot[id] !== currentLocal[id]) {
+            if (id in currentLocal) mine[id] = currentLocal[id]
+            else delete mine[id]
+          }
+        }
         setUserVotes(mine)
         const s = localStorage.getItem('parkingVotes_v1')
         const all = s ? JSON.parse(s) as Record<string, Record<string, boolean>> : {}
@@ -1062,7 +1102,10 @@ export default function ParkingVotePage() {
       setSelectedIds(new Set()); setBatchComment('')
       fetchCommunityTotal()
     } catch {
-      setBatchError('Failed to save votes. Please try again.')
+      // Some chunks may have committed before the failure — reconcile so the UI (and the
+      // optimistically-inflated community total) match what's actually in the DB.
+      setBatchError('Some votes may not have saved. We\'ve refreshed to show what was recorded.')
+      await reconcileVotesFromServer()
     } finally {
       setBatchSubmitting(false)
       setBatchProgress(null)
@@ -1109,7 +1152,10 @@ export default function ParkingVotePage() {
       }
       fetchCommunityTotal()
     } catch {
-      setBatchError('Failed to clear votes. Please try again.')
+      // Some deletes may have committed before the failure — reconcile to server truth so
+      // spots that weren't actually cleared reappear and the community total is corrected.
+      setBatchError('Some votes may not have cleared. We\'ve refreshed to show what remains.')
+      await reconcileVotesFromServer()
     } finally {
       setBatchSubmitting(false)
       setBatchProgress(null)
@@ -1492,23 +1538,24 @@ export default function ParkingVotePage() {
               setUserVotes(prev => ({ ...prev, [id]: support }))
               persistVote(id, support)
               setVoteCounts(prev => ({ ...prev, [id]: tally }))
-              // Optimistic: +1 if new yes or flipped from no→yes; -1 if flipped from yes→no
+              // Optimistic: +1 if new yes or flipped from no→yes; -1 if flipped from yes→no.
+              // Don't refetch the community total here: this handler runs BEFORE SitePanel
+              // awaits the POST, so a fetch would read the pre-vote total and clobber the
+              // optimistic +1 (visible flicker). The 30s poll reconciles other users' votes.
               setCommunityTotal(prev => {
                 if (prev === null) return prev
                 if (support && prevVote !== true) return prev + 1
                 if (!support && prevVote === true) return prev - 1
                 return prev
               })
-              fetchCommunityTotal()
             }}
             onVoteUndone={(id: string, tally: VoteTally) => {
               const prevVote = userVotes[id]
               setUserVotes(prev => { const n = { ...prev }; delete n[id]; return n })
               unpersistVote(id)
               setVoteCounts(prev => ({ ...prev, [id]: tally }))
-              // Optimistic: -1 only if we're removing a yes vote
+              // Optimistic: -1 only if we're removing a yes vote (see note above re: no refetch).
               if (prevVote === true) setCommunityTotal(prev => prev !== null ? prev - 1 : prev)
-              fetchCommunityTotal()
             }}
           />
         )}

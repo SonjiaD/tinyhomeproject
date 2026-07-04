@@ -27,6 +27,23 @@ supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_KEY")
 supabase = create_client(supabase_url, supabase_key) if supabase_url and supabase_key else None
 
+def parse_support(val):
+    """Strictly interpret a vote's support value. Returns True/False, or None if invalid.
+    Guards against Python's bool() coercion (bool("false") is True), which would silently
+    record opposition as support and corrupt the research dataset."""
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)) and val in (0, 1):
+        return bool(val)
+    if isinstance(val, str):
+        s = val.strip().lower()
+        if s in ("true", "yes", "1"):
+            return True
+        if s in ("false", "no", "0"):
+            return False
+    return None
+
+
 # Map UI labels to GeoJSON columns
 feature_map = {
     "Transit Access": "transit_dist",
@@ -75,9 +92,15 @@ except Exception as _e:
     POLY_RAW = '{"type":"FeatureCollection","total_spots":0,"features":[]}'
     _poly_total = 0
 
+# Content-hash ETag so browsers cache this 52 MB payload and revalidate cheaply (304) on
+# each page load instead of re-downloading + re-gzipping it every time. The hash changes
+# only when the polygon data changes (a new pipeline run + deploy), forcing a fresh fetch.
+import hashlib
+POLY_ETAG = 'W/"' + hashlib.md5(POLY_RAW.encode("utf-8")).hexdigest() + '"'
+
 @app.route("/api/ahp", methods=["POST"])
 def calculate_ahp():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     comparisons = data.get("comparisons", {})
     size = len(features)
     ahp_matrix = np.ones((size, size))
@@ -163,29 +186,30 @@ def get_votes():
     if not supabase:
         return jsonify({}), 200
     try:
-        # Paginate: PostgREST caps at 1,000 rows/query, so a single select silently
-        # undercounts the community tallies once total votes exceed 1,000.
+        # Read pre-aggregated per-site tallies from the site_vote_summary view instead of
+        # re-tallying every raw vote row in Python on each request. The DB does the GROUP BY,
+        # and we ship one row per *voted* site rather than one per vote — this scales with the
+        # number of voted sites (bounded), not the ever-growing total vote count.
+        # The view LEFT JOINs all sites, so filter to voted ones; still paginate for the cap.
         counts = {}
         page = 0
         PAGE = 1000
         while True:
             start = page * PAGE
             result = (
-                supabase.table("votes")
-                .select("site_id, support")
+                supabase.table("site_vote_summary")
+                .select("site_id, support_count, oppose_count, total_votes")
+                .gt("total_votes", 0)
                 .range(start, start + PAGE - 1)
                 .execute()
             )
             rows = result.data or []
             for row in rows:
-                sid = row["site_id"]
-                if sid not in counts:
-                    counts[sid] = {"yes": 0, "no": 0, "total": 0}
-                if row["support"]:
-                    counts[sid]["yes"] += 1
-                else:
-                    counts[sid]["no"] += 1
-                counts[sid]["total"] += 1
+                counts[row["site_id"]] = {
+                    "yes": row.get("support_count") or 0,
+                    "no": row.get("oppose_count") or 0,
+                    "total": row.get("total_votes") or 0,
+                }
             if len(rows) < PAGE:
                 break
             page += 1
@@ -233,31 +257,31 @@ def get_my_votes():
 def submit_vote():
     if not supabase:
         return jsonify({"error": "Database not configured"}), 500
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     site_id = str(data.get("site_id", "")).strip()
-    support = data.get("support")
+    support = parse_support(data.get("support"))
     comment = (data.get("comment") or "")[:500]
     user_id = data.get("user_id") or None
     if not site_id or support is None:
-        return jsonify({"error": "site_id and support are required"}), 400
+        return jsonify({"error": "site_id and a boolean support are required"}), 400
     # Voting requires login: every vote must be attributable to a user so it can be
     # joined to that respondent's profile for research.
     if not user_id:
         return jsonify({"error": "You must be logged in to vote"}), 401
     try:
-        row = {"site_id": site_id, "support": bool(support),
+        row = {"site_id": site_id, "support": support,
                "comment": comment or None, "user_id": str(user_id)}
         supabase.table("votes").upsert(row, on_conflict="user_id,site_id").execute()
         return jsonify({"status": "ok"}), 201
     except Exception as e:
         print(f"Error saving vote: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 @app.route("/api/votes", methods=["DELETE"])
 def delete_vote():
     if not supabase:
         return jsonify({"error": "Database not configured"}), 500
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     site_id = str(data.get("site_id", "")).strip()
     user_id = str(data.get("user_id", "")).strip()
     if not site_id or not user_id:
@@ -267,38 +291,38 @@ def delete_vote():
         return jsonify({"status": "ok"}), 200
     except Exception as e:
         print(f"Error deleting vote: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 @app.route("/api/votes/batch", methods=["POST"])
 def submit_votes_batch():
     if not supabase:
         return jsonify({"error": "Database not configured"}), 500
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     site_ids = data.get("site_ids", [])
-    support = data.get("support")
+    support = parse_support(data.get("support"))
     comment = (data.get("comment") or "")[:500]
     user_id = data.get("user_id") or None
     if not site_ids or support is None:
-        return jsonify({"error": "site_ids and support are required"}), 400
+        return jsonify({"error": "site_ids and a boolean support are required"}), 400
     if len(site_ids) > 500:
         return jsonify({"error": "Too many site_ids (max 500)"}), 400
     # Voting requires login (see submit_vote).
     if not user_id:
         return jsonify({"error": "You must be logged in to vote"}), 401
     try:
-        rows = [{"site_id": str(sid), "support": bool(support),
+        rows = [{"site_id": str(sid), "support": support,
                  "comment": comment or None, "user_id": str(user_id)} for sid in site_ids]
         supabase.table("votes").upsert(rows, on_conflict="user_id,site_id").execute()
         return jsonify({"status": "ok", "count": len(rows)}), 201
     except Exception as e:
         print(f"Error saving batch votes: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 @app.route("/api/votes/batch", methods=["DELETE"])
 def delete_votes_batch():
     if not supabase:
         return jsonify({"error": "Database not configured"}), 500
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     site_ids = data.get("site_ids", [])
     user_id = str(data.get("user_id", "")).strip()
     if not site_ids or not user_id:
@@ -310,11 +334,11 @@ def delete_votes_batch():
         return jsonify({"status": "ok", "count": len(site_ids)}), 200
     except Exception as e:
         print(f"Error deleting batch votes: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 @app.route("/api/wsm", methods=["POST"])
 def weighted_sum_model():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     weights = data.get("weights", {}) or {}
 
     gdf = CACHED_GDF.copy()
@@ -341,7 +365,14 @@ def weighted_sum_model():
 
 @app.route("/api/polygon_map", methods=["GET"])
 def polygon_map():
-    return Response(POLY_RAW, mimetype="application/json")
+    # Cheap revalidation: if the client already has this exact payload, return 304 (no body),
+    # skipping the 52 MB send + gzip entirely.
+    if request.headers.get("If-None-Match") == POLY_ETAG:
+        return Response(status=304, headers={"ETag": POLY_ETAG, "Cache-Control": "no-cache"})
+    resp = Response(POLY_RAW, mimetype="application/json")
+    resp.headers["ETag"] = POLY_ETAG
+    resp.headers["Cache-Control"] = "no-cache"   # cache, but always revalidate via ETag
+    return resp
 
 @app.route("/api/polygon_count", methods=["GET"])
 def polygon_count():
@@ -356,7 +387,7 @@ def save_ahp_submission():
     if not supabase:
         return {'error': 'Database not configured'}, 500
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     try:
         # Prepare the submission data
         submission = {
@@ -376,7 +407,7 @@ def save_ahp_submission():
         return {'status': 'success'}, 200
     except Exception as e:
         print(f"Error saving to Supabase: {e}")
-        return {'error': str(e)}, 500
+        return {'error': 'Something went wrong. Please try again.'}, 500
 
 @app.route("/api/ping", methods=["GET"])
 def ping():
@@ -403,7 +434,7 @@ def get_suggestions():
 def submit_suggestion():
     if not supabase:
         return jsonify({"error": "Database not configured"}), 500
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     try:
         supabase.table("suggestions").insert({
             "lat": float(data["lat"]),
@@ -415,7 +446,7 @@ def submit_suggestion():
         return jsonify({"status": "ok"}), 201
     except Exception as e:
         print(f"Error saving suggestion: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
