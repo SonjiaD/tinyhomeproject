@@ -89,12 +89,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUp(email: string, password: string, name: string) {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: name } },
-    })
-    return { error }
+    // Supabase doesn't return an error for a duplicate email (anti-enumeration) — it
+    // signals this instead via an empty `identities` array on the raw /signup response,
+    // present only on an existing, already-confirmed account. But supabase-js's own
+    // signUp() can't be used to read this: its client-side response transform assumes
+    // the raw body is wrapped as `{ user: {...} }`, while GoTrue's actual /signup response
+    // (when no session is created yet, i.e. email confirmation is pending) is a FLAT user
+    // object with no `user` key — so the SDK's parsed `data.user` is null for every
+    // pending-confirmation signup, duplicate or brand-new, making the check silently no-op.
+    // Call the REST endpoint directly instead and read the raw body ourselves.
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+    let res: Response
+    try {
+      res = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: anonKey },
+        body: JSON.stringify({ email, password, data: { full_name: name } }),
+      })
+    } catch {
+      return { error: new Error('Network error. Please check your connection and try again.') }
+    }
+    const body = await res.json().catch(() => null)
+    if (!res.ok) {
+      return { error: new Error(body?.msg || body?.error_description || 'Something went wrong. Please try again.') }
+    }
+    if (Array.isArray(body?.identities) && body.identities.length === 0) {
+      return { error: new Error('An account with this email already exists. Please sign in instead.') }
+    }
+    // If GoTrue returned an immediate session (e.g. email confirmation disabled on this
+    // project in the future), sync it into the SDK's own store so getSession() /
+    // onAuthStateChange stay consistent with what we just did via the raw fetch above.
+    if (body?.access_token && body?.refresh_token) {
+      await supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token })
+    }
+    return { error: null }
   }
 
   async function signOut() {
