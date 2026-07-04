@@ -163,20 +163,70 @@ def get_votes():
     if not supabase:
         return jsonify({}), 200
     try:
-        result = supabase.table("votes").select("site_id, support").execute()
+        # Paginate: PostgREST caps at 1,000 rows/query, so a single select silently
+        # undercounts the community tallies once total votes exceed 1,000.
         counts = {}
-        for row in result.data:
-            sid = row["site_id"]
-            if sid not in counts:
-                counts[sid] = {"yes": 0, "no": 0, "total": 0}
-            if row["support"]:
-                counts[sid]["yes"] += 1
-            else:
-                counts[sid]["no"] += 1
-            counts[sid]["total"] += 1
+        page = 0
+        PAGE = 1000
+        while True:
+            start = page * PAGE
+            result = (
+                supabase.table("votes")
+                .select("site_id, support")
+                .range(start, start + PAGE - 1)
+                .execute()
+            )
+            rows = result.data or []
+            for row in rows:
+                sid = row["site_id"]
+                if sid not in counts:
+                    counts[sid] = {"yes": 0, "no": 0, "total": 0}
+                if row["support"]:
+                    counts[sid]["yes"] += 1
+                else:
+                    counts[sid]["no"] += 1
+                counts[sid]["total"] += 1
+            if len(rows) < PAGE:
+                break
+            page += 1
         return jsonify(counts), 200
     except Exception as e:
         print(f"Error fetching votes: {e}")
+        return jsonify({}), 200
+
+@app.route("/api/votes/mine", methods=["GET"])
+def get_my_votes():
+    """Return {site_id: support_bool} for one user so their votes rehydrate on any
+    device (the DB is the source of truth; localStorage is only a client-side cache)."""
+    if not supabase:
+        return jsonify({}), 200
+    user_id = (request.args.get("user_id") or "").strip()
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+    try:
+        # Paginate: PostgREST caps at 1,000 rows/query and one user may have more
+        # (batch voting can select thousands of spots at once).
+        mine = {}
+        page = 0
+        PAGE = 1000
+        while True:
+            start = page * PAGE
+            result = (
+                supabase.table("votes")
+                .select("site_id, support")
+                .eq("user_id", user_id)
+                .range(start, start + PAGE - 1)
+                .execute()
+            )
+            rows = result.data or []
+            for row in rows:
+                mine[row["site_id"]] = row["support"]
+            if len(rows) < PAGE:
+                break
+            page += 1
+        return jsonify(mine), 200
+    except Exception as e:
+        print(f"Error fetching user's votes: {e}")
         return jsonify({}), 200
 
 @app.route("/api/votes", methods=["POST"])

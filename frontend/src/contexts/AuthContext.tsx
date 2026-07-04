@@ -51,12 +51,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      await loadProfile(session?.user?.id)
-      setLoading(false)
-    })
+    let mounted = true
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        if (!mounted) return
+        setSession(session)
+        setUser(session?.user ?? null)
+        await loadProfile(session?.user?.id)
+      })
+      .catch(async (err) => {
+        // A stale/invalid refresh token (e.g. the account was deleted) rejects here.
+        // Purge the dead session so it stops erroring on every load, and fall through
+        // to a clean logged-out state (AuthGuard then routes to login).
+        console.warn('Auth session invalid, signing out:', err?.message ?? err)
+        try { await supabase.auth.signOut({ scope: 'local' }) } catch { /* already gone */ }
+        if (!mounted) return
+        setSession(null); setUser(null); setProfile(null)
+      })
+      .finally(() => { if (mounted) setLoading(false) })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
@@ -64,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loadProfile(session?.user?.id)
     })
 
-    return () => subscription.unsubscribe()
+    return () => { mounted = false; subscription.unsubscribe() }
   }, [])
 
   async function refreshProfile() {

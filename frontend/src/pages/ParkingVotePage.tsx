@@ -188,6 +188,19 @@ function pointInPolygon(lat: number, lon: number, verts: LatLng[]): boolean {
   return inside
 }
 
+// Same ray-casting test but against a raw GeoJSON ring of [lon, lat] pairs — avoids
+// allocating LatLng objects, so it's cheap to run across every spot on each click.
+function pointInRingRaw(lat: number, lon: number, ring: number[][]): boolean {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1]
+    const xj = ring[j][0], yj = ring[j][1]
+    if (((yi > lat) !== (yj > lat)) && (lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi))
+      inside = !inside
+  }
+  return inside
+}
+
 // ── Canvas-rendered GeoJSON layer — created ONCE, styled imperatively ─────────
 interface ParkingLayerProps {
   geojson: any
@@ -244,13 +257,10 @@ function ParkingLayer({
       if (id && layerMapRef) layerMapRef.current.set(id, e.layer as L.Path)
     })
 
-    // One click handler on the parent layer instead of one per feature
-    layer.on('click', (e: L.LeafletMouseEvent) => {
-      if (drawModeRef.current !== 'none') return
-      L.DomEvent.stopPropagation(e)
-      const id = (e as any).sourceTarget?.feature?.properties?.id
-      if (id) onSelectRef.current(id)
-    })
+    // NOTE: single-spot selection is handled by a map-level click + JS hit-test
+    // (see the map.on('click') effect below), NOT a per-feature layer click.
+    // Leaflet's canvas-renderer per-feature click silently fails in the production
+    // build, so we reuse the same rawGeojson hit-testing the marquee tools rely on.
 
     layerRef.current = layer
     // Visible effect only fires when `visible` changes; if visible is already true
@@ -275,6 +285,30 @@ function ParkingLayer({
       layerRef.current = null
     }
   }, [geojson, map]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Single-spot selection via a map-level click + JS point-in-polygon hit-test.
+  // Replaces Leaflet's canvas per-feature click (which fails in the prod build) and
+  // reuses the same rawGeojson-based hit-testing the marquee/circle tools use.
+  useEffect(() => {
+    if (!geojson) return
+    const onMapClick = (e: L.LeafletMouseEvent) => {
+      // Draw tools own the gesture; also skip when spots are hidden (zoomed out).
+      if (drawModeRef.current !== 'none') return
+      if (!layerRef.current || !map.hasLayer(layerRef.current)) return
+      const { lat, lng } = e.latlng
+      // Spots are ~9 m long; the click's containing polygon has its first vertex
+      // well within this bbox, so prefilter cheaply before the ray-cast.
+      const D = 0.0005
+      for (const f of geojson.features as any[]) {
+        const ring: number[][] = f.geometry.coordinates[0]
+        const lon0 = ring[0][0], lat0 = ring[0][1]
+        if (Math.abs(lat0 - lat) > D || Math.abs(lon0 - lng) > D) continue
+        if (pointInRingRaw(lat, lng, ring)) { onSelectRef.current(f.properties.id); return }
+      }
+    }
+    map.on('click', onMapClick)
+    return () => { map.off('click', onMapClick) }
+  }, [geojson, map]) // drawModeRef & onSelectRef are refs
 
   // Show / hide based on zoom without recreating
   useEffect(() => {
@@ -767,13 +801,33 @@ export default function ParkingVotePage() {
     return () => clearInterval(interval)
   }, [fetchCommunityTotal])
 
-  // Load this user's prior votes from localStorage
+  // Load this user's prior votes. localStorage gives an instant paint, but the DB is
+  // the source of truth so votes rehydrate on any device (localStorage is only a cache).
   useEffect(() => {
     if (!user?.id) return
+    const uid = user.id
+    // 1. Instant paint from the local cache (may be empty on a new device)
     const stored = localStorage.getItem('parkingVotes_v1')
-    if (!stored) return
-    const all = JSON.parse(stored) as Record<string, Record<string, boolean>>
-    setUserVotes(all[user.id] ?? {})
+    if (stored) {
+      try {
+        const all = JSON.parse(stored) as Record<string, Record<string, boolean>>
+        if (all[uid]) setUserVotes(all[uid])
+      } catch { /* ignore malformed cache */ }
+    }
+    // 2. Authoritative hydrate from the DB, then refresh the local cache
+    let cancelled = false
+    axios.get(`${API}/api/votes/mine`, { params: { user_id: uid } })
+      .then(res => {
+        if (cancelled) return
+        const mine = (res.data ?? {}) as Record<string, boolean>
+        setUserVotes(mine)
+        const s = localStorage.getItem('parkingVotes_v1')
+        const all = s ? JSON.parse(s) as Record<string, Record<string, boolean>> : {}
+        all[uid] = mine
+        localStorage.setItem('parkingVotes_v1', JSON.stringify(all))
+      })
+      .catch(() => { /* keep the localStorage fallback on network error */ })
+    return () => { cancelled = true }
   }, [user?.id])
 
   function persistVote(siteId: string, support: boolean) {
