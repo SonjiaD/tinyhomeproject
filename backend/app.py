@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from flask_compress import Compress
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import numpy as np
 import geopandas as gpd
 import pandas as pd
@@ -19,13 +21,46 @@ CORS(app, origins=[
     "http://localhost:5173",
 ])
 
+# Per-IP rate limiting on vote writes (in-memory storage is correct here: gunicorn is
+# pinned to a single worker in gunicorn.conf.py, so there's exactly one limiter state).
+# No default limit — GETs (map/tallies) stay unthrottled; write endpoints opt in below.
+limiter = Limiter(get_remote_address, app=app, default_limits=[], storage_uri="memory://")
+
 # Load environment variables
 load_dotenv()
 
-# Supabase setup
+# Supabase setup. Prefer the service-role key (server-side only, bypasses RLS) so the
+# database tables can have RLS enabled — with RLS on, the browser's anon key can no longer
+# read/write votes directly via PostgREST; ALL vote traffic must flow through this backend,
+# which verifies the caller's JWT (see require_user) before touching the DB.
 supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_KEY")
+_service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+_anon_key = os.getenv("SUPABASE_KEY")
+supabase_key = _service_key or _anon_key
+if _anon_key and not _service_key:
+    print("WARNING: SUPABASE_SERVICE_ROLE_KEY not set — falling back to the anon key. "
+          "Vote writes will FAIL once RLS is enabled on the votes tables. "
+          "Set SUPABASE_SERVICE_ROLE_KEY in the environment (Render dashboard in production).")
 supabase = create_client(supabase_url, supabase_key) if supabase_url and supabase_key else None
+
+
+def require_user():
+    """Verify the caller's Supabase JWT (Authorization: Bearer <token>) and return the
+    authenticated user's id, or None if missing/invalid.
+
+    Security: user identity must come from a verified token, never from the request body —
+    otherwise anyone can vote as (or delete the votes of) any user whose UUID they know."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header[len("Bearer "):].strip()
+    if not token or not supabase:
+        return None
+    try:
+        res = supabase.auth.get_user(token)
+        return res.user.id if res and res.user else None
+    except Exception:
+        return None
 
 def parse_support(val):
     """Strictly interpret a vote's support value. Returns True/False, or None if invalid.
@@ -220,24 +255,35 @@ def get_votes():
 
 @app.route("/api/votes/mine", methods=["GET"])
 def get_my_votes():
-    """Return {site_id: support_bool} for one user so their votes rehydrate on any
-    device (the DB is the source of truth; localStorage is only a client-side cache)."""
+    """Return this AUTHENTICATED user's votes so they rehydrate on any device (the DB is the
+    source of truth; localStorage is only a client-side cache). Identity comes from the
+    verified JWT — a query-param user_id would let anyone enumerate any user's voting record
+    by UUID.
+
+    Response shape: the flat {site_id: support_bool} map as before, plus a "__comments__"
+    entry holding {site_id: text} for the sites that actually have a note (they're rare), so
+    the panel can prefill the textarea and let the user edit a note instead of silently
+    overwriting it. Comments are smuggled in under a reserved key rather than nesting the
+    votes under one because frontend and backend deploy separately — reshaping the response
+    would break vote hydration for every client still running the old bundle. Real site_ids
+    are "<osm_way>_<L|R>_<n>", so "__comments__" can never collide with one."""
     if not supabase:
-        return jsonify({}), 200
-    user_id = (request.args.get("user_id") or "").strip()
+        return jsonify({"__comments__": {}}), 200
+    user_id = require_user()
     if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
+        return jsonify({"error": "You must be logged in"}), 401
     try:
         # Paginate: PostgREST caps at 1,000 rows/query and one user may have more
         # (batch voting can select thousands of spots at once).
         mine = {}
+        comments = {}
         page = 0
         PAGE = 1000
         while True:
             start = page * PAGE
             result = (
                 supabase.table("votes")
-                .select("site_id, support")
+                .select("site_id, support, comment")
                 .eq("user_id", user_id)
                 .range(start, start + PAGE - 1)
                 .execute()
@@ -245,32 +291,51 @@ def get_my_votes():
             rows = result.data or []
             for row in rows:
                 mine[row["site_id"]] = row["support"]
+                if row.get("comment"):
+                    comments[row["site_id"]] = row["comment"]
             if len(rows) < PAGE:
                 break
             page += 1
-        return jsonify(mine), 200
+        return jsonify({**mine, "__comments__": comments}), 200
     except Exception as e:
         print(f"Error fetching user's votes: {e}")
-        return jsonify({}), 200
+        return jsonify({"__comments__": {}}), 200
 
 @app.route("/api/votes", methods=["POST"])
+@limiter.limit("30/minute")
 def submit_vote():
     if not supabase:
         return jsonify({"error": "Database not configured"}), 500
+    # Identity comes ONLY from the verified JWT. Any user_id in the request body is
+    # ignored — trusting it would let anyone vote as any user whose UUID they know.
+    user_id = require_user()
+    if not user_id:
+        return jsonify({"error": "You must be logged in to vote"}), 401
     data = request.get_json(silent=True) or {}
     site_id = str(data.get("site_id", "")).strip()
     support = parse_support(data.get("support"))
-    comment = (data.get("comment") or "")[:500]
-    user_id = data.get("user_id") or None
     if not site_id or support is None:
         return jsonify({"error": "site_id and a boolean support are required"}), 400
-    # Voting requires login: every vote must be attributable to a user so it can be
-    # joined to that respondent's profile for research.
-    if not user_id:
-        return jsonify({"error": "You must be logged in to vote"}), 401
     try:
+        # An upsert replaces the whole row, so the presence of the "comment" key decides
+        # what happens to an existing note: sending it (even as "") sets or clears the note,
+        # omitting it preserves whatever is stored. Without this, any client that flips a
+        # vote without knowing the current note would silently destroy it — which is exactly
+        # how a real user's comment was lost.
+        if "comment" in data:
+            comment = ((data.get("comment") or "")[:500]) or None
+        else:
+            res = (
+                supabase.table("votes")
+                .select("comment")
+                .eq("user_id", user_id)
+                .eq("site_id", site_id)
+                .limit(1)
+                .execute()
+            )
+            comment = (res.data[0]["comment"] if res.data else None)
         row = {"site_id": site_id, "support": support,
-               "comment": comment or None, "user_id": str(user_id)}
+               "comment": comment, "user_id": user_id}
         supabase.table("votes").upsert(row, on_conflict="user_id,site_id").execute()
         return jsonify({"status": "ok"}), 201
     except Exception as e:
@@ -278,14 +343,18 @@ def submit_vote():
         return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 @app.route("/api/votes", methods=["DELETE"])
+@limiter.limit("30/minute")
 def delete_vote():
     if not supabase:
         return jsonify({"error": "Database not configured"}), 500
+    # Verified JWT only — a body user_id would let anyone delete another user's votes.
+    user_id = require_user()
+    if not user_id:
+        return jsonify({"error": "You must be logged in"}), 401
     data = request.get_json(silent=True) or {}
     site_id = str(data.get("site_id", "")).strip()
-    user_id = str(data.get("user_id", "")).strip()
-    if not site_id or not user_id:
-        return jsonify({"error": "site_id and user_id are required"}), 400
+    if not site_id:
+        return jsonify({"error": "site_id is required"}), 400
     try:
         supabase.table("votes").delete().eq("site_id", site_id).eq("user_id", user_id).execute()
         return jsonify({"status": "ok"}), 200
@@ -294,24 +363,39 @@ def delete_vote():
         return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 @app.route("/api/votes/batch", methods=["POST"])
+@limiter.limit("10/minute")
 def submit_votes_batch():
     if not supabase:
         return jsonify({"error": "Database not configured"}), 500
+    user_id = require_user()  # verified JWT only (see submit_vote)
+    if not user_id:
+        return jsonify({"error": "You must be logged in to vote"}), 401
     data = request.get_json(silent=True) or {}
     site_ids = data.get("site_ids", [])
     support = parse_support(data.get("support"))
     comment = (data.get("comment") or "")[:500]
-    user_id = data.get("user_id") or None
     if not site_ids or support is None:
         return jsonify({"error": "site_ids and a boolean support are required"}), 400
     if len(site_ids) > 500:
         return jsonify({"error": "Too many site_ids (max 500)"}), 400
-    # Voting requires login (see submit_vote).
-    if not user_id:
-        return jsonify({"error": "You must be logged in to vote"}), 401
     try:
-        rows = [{"site_id": str(sid), "support": support,
-                 "comment": comment or None, "user_id": str(user_id)} for sid in site_ids]
+        ids = [str(sid) for sid in site_ids]
+        # An upsert replaces the whole row, so a batch vote with an empty comment box would
+        # null out notes the user had written on individual spots inside the selection. When
+        # no batch comment is given, carry the existing ones through. Capped at 500 ids, so
+        # this is one extra select per batch.
+        existing = {}
+        if not comment:
+            res = (
+                supabase.table("votes")
+                .select("site_id, comment")
+                .eq("user_id", user_id)
+                .in_("site_id", ids)
+                .execute()
+            )
+            existing = {r["site_id"]: r["comment"] for r in (res.data or []) if r.get("comment")}
+        rows = [{"site_id": sid, "support": support,
+                 "comment": comment or existing.get(sid), "user_id": user_id} for sid in ids]
         supabase.table("votes").upsert(rows, on_conflict="user_id,site_id").execute()
         return jsonify({"status": "ok", "count": len(rows)}), 201
     except Exception as e:
@@ -319,14 +403,17 @@ def submit_votes_batch():
         return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 @app.route("/api/votes/batch", methods=["DELETE"])
+@limiter.limit("10/minute")
 def delete_votes_batch():
     if not supabase:
         return jsonify({"error": "Database not configured"}), 500
+    user_id = require_user()  # verified JWT only (see delete_vote)
+    if not user_id:
+        return jsonify({"error": "You must be logged in"}), 401
     data = request.get_json(silent=True) or {}
     site_ids = data.get("site_ids", [])
-    user_id = str(data.get("user_id", "")).strip()
-    if not site_ids or not user_id:
-        return jsonify({"error": "site_ids and user_id are required"}), 400
+    if not site_ids:
+        return jsonify({"error": "site_ids is required"}), 400
     if len(site_ids) > 500:
         return jsonify({"error": "Too many site_ids (max 500)"}), 400
     try:
@@ -424,7 +511,9 @@ def get_suggestions():
     if not supabase:
         return jsonify([]), 200
     try:
-        result = supabase.table("suggestions").select("*").execute()
+        # Deliberately exclude name/occupation: this endpoint is public and those fields
+        # are submitter PII. The map only needs location + reason for its markers.
+        result = supabase.table("suggestions").select("id, lat, lng, reason, created_at").execute()
         return jsonify(result.data), 200
     except Exception as e:
         print(f"Error fetching suggestions: {e}")

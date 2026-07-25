@@ -14,6 +14,7 @@ import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import OnboardingGoalPage from './pages/OnboardingGoalPage'
 import ProfilePage from './pages/ProfilePage'
+import { ParkletExplainer } from './components/ParkletExplainer'
 
 const PRE_AUTH_ROUTES = ['/', '/login', '/signup', '/onboarding/goal', '/intro']
 
@@ -114,6 +115,7 @@ function AppShell() {
         <Route path="/linear" element={<AuthGuard><LinearWeightingPage /></AuthGuard>} />
       </Routes>
       </div>
+      <ParkletExplainer />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { formatDistance, normalize } from '../lib/normalization'
+import { getAuthHeaders } from '../lib/supabase'
 import type { VoteSite, VoteTally } from '../lib/types'
 import type { DistanceBounds } from '../lib/normalization'
 
@@ -34,21 +35,31 @@ interface SitePanelProps {
   voteTally: VoteTally
   myVote: boolean | undefined
   userId: string | undefined
+  /** The note this user already saved for this site, so the textarea can be edited rather
+   *  than silently overwritten. Optional — VotePage renders this panel without vote state. */
+  savedComment?: string
   onClose: () => void
   onVoteSubmitted: (siteId: string, newTally: VoteTally, support: boolean) => void
   onVoteUndone: (siteId: string, newTally: VoteTally) => void
+  onCommentSaved?: (siteId: string, comment: string) => void
 }
 
-export function SitePanel({ site, allBounds, voteTally, myVote, userId, onClose, onVoteSubmitted, onVoteUndone }: SitePanelProps) {
+export function SitePanel({ site, allBounds, voteTally, myVote, userId, savedComment, onClose, onVoteSubmitted, onVoteUndone, onCommentSaved }: SitePanelProps) {
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [savingNote, setSavingNote] = useState(false)
+  const [noteSaved, setNoteSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [svError, setSvError] = useState(false)
 
   const isOpen = site !== null
+  const commentDirty = comment.trim() !== (savedComment ?? '').trim()
 
   async function handleUndo() {
     if (!site || myVote === undefined) return
+    setSubmitting(true)
+    setError(null)
+    const restore = myVote
     const newTally: VoteTally = {
       yes: voteTally.yes - (myVote ? 1 : 0),
       no: voteTally.no - (myVote ? 0 : 1),
@@ -58,25 +69,54 @@ export function SitePanel({ site, allBounds, voteTally, myVote, userId, onClose,
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/votes`, {
         data: { site_id: site.id, user_id: userId },
+        headers: await getAuthHeaders(),
       })
+      // The note lived on the deleted vote row, so drop it from the panel and the cache too.
+      setComment('')
+      setLastSaved('')
+      onCommentSaved?.(site.id, '')
     } catch {
       setError('Failed to undo your vote. Please try again.')
-      onVoteSubmitted(site.id, voteTally, myVote)
+      onVoteSubmitted(site.id, voteTally, restore)
     } finally {
       setSubmitting(false)
     }
   }
 
+  async function handleSaveNote() {
+    if (!site || myVote === undefined) return
+    setSavingNote(true)
+    setError(null)
+    const text = comment.trim()
+    try {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/votes`, {
+        site_id: site.id,
+        support: myVote,
+        comment: text,
+        user_id: userId,
+      }, { headers: await getAuthHeaders() })
+      onCommentSaved?.(site.id, text)
+      setNoteSaved(true)
+      setTimeout(() => setNoteSaved(false), 2000)
+    } catch {
+      setError('Failed to save your note. Please try again.')
+    } finally {
+      setSavingNote(false)
+    }
+  }
+
   async function handleVote(support: boolean) {
     if (!site) return
+    // Clicking the already-selected side used to retract the vote. That silently destroyed
+    // real users' notes (people click the highlighted button expecting it to save), so undo
+    // now lives on its own explicit "Remove my vote" control below.
+    if (myVote === support) {
+      if (commentDirty) await handleSaveNote()
+      return
+    }
     setSubmitting(true)
     setError(null)
     const prev = myVote
-
-    if (prev === support) {
-      await handleUndo()
-      return
-    }
 
     const newTally: VoteTally = prev === undefined
       ? { yes: voteTally.yes + (support ? 1 : 0), no: voteTally.no + (support ? 0 : 1), total: voteTally.total + 1 }
@@ -84,12 +124,16 @@ export function SitePanel({ site, allBounds, voteTally, myVote, userId, onClose,
 
     onVoteSubmitted(site.id, newTally, support)
     try {
+      // Always send the textarea's current contents — it is prefilled with the saved note,
+      // so flipping a vote carries the note across instead of nulling it.
+      const text = comment.trim()
       await axios.post(`${import.meta.env.VITE_API_URL}/api/votes`, {
         site_id: site.id,
         support,
-        comment: comment.trim() || null,
+        comment: text,
         user_id: userId,
-      })
+      }, { headers: await getAuthHeaders() })
+      onCommentSaved?.(site.id, text)
     } catch {
       setError('Failed to save your vote. Please try again.')
       if (prev !== undefined) {
@@ -102,13 +146,24 @@ export function SitePanel({ site, allBounds, voteTally, myVote, userId, onClose,
     }
   }
 
-  // Reset comment/error when switching sites
+  // Reset error/street-view when switching sites, and prefill the textarea with the note
+  // already saved for the newly selected site so it can be read and edited.
   const [lastSiteId, setLastSiteId] = useState<string | null>(null)
+  const [lastSaved, setLastSaved] = useState<string>('')
   if (site && site.id !== lastSiteId) {
     setLastSiteId(site.id)
-    setComment('')
+    setLastSaved(savedComment ?? '')
+    setComment(savedComment ?? '')
     setError(null)
     setSvError(false)
+    setNoteSaved(false)
+  } else if (site && (savedComment ?? '') !== lastSaved) {
+    // Notes hydrate from the server after mount, so a site selected during that window
+    // starts blank. Adopt the value when it lands — but only if the user hasn't typed,
+    // which would otherwise clobber what they're mid-way through writing.
+    const untouched = comment === lastSaved
+    setLastSaved(savedComment ?? '')
+    if (untouched) setComment(savedComment ?? '')
   }
 
   return (
@@ -203,18 +258,7 @@ export function SitePanel({ site, allBounds, voteTally, myVote, userId, onClose,
                 </div>
               )}
 
-              <textarea
-                value={comment}
-                onChange={e => setComment(e.target.value)}
-                placeholder="Leave a comment (optional)"
-                rows={3}
-                maxLength={500}
-                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700
-                  placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500
-                  focus:border-transparent resize-none"
-              />
-
-              <div className="flex gap-2 mt-3">
+              <div className="flex gap-2 mb-3">
                 <button
                   onClick={() => handleVote(true)}
                   disabled={submitting}
@@ -237,10 +281,62 @@ export function SitePanel({ site, allBounds, voteTally, myVote, userId, onClose,
                 </button>
               </div>
 
+              {/* Note editor. A note lives on the vote row (votes.support is NOT NULL), so
+                  it can only be saved once a vote exists. */}
+              <div className="mt-4">
+                <div className="flex items-baseline justify-between mb-1.5">
+                  <label htmlFor="site-note" className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Your note
+                  </label>
+                  <span className="text-[11px] text-gray-400">{comment.length}/500</span>
+                </div>
+                <textarea
+                  id="site-note"
+                  value={comment}
+                  onChange={e => { setComment(e.target.value); setNoteSaved(false) }}
+                  placeholder={myVote === undefined ? 'Vote first, then add a note…' : 'Why this spot? (optional)'}
+                  rows={3}
+                  maxLength={500}
+                  disabled={myVote === undefined}
+                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700
+                    placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500
+                    focus:border-transparent resize-none disabled:bg-gray-50 disabled:text-gray-400"
+                />
+
+                {myVote === undefined ? (
+                  <p className="text-xs text-gray-400 mt-2">
+                    Choose Support or Oppose above to leave a note.
+                  </p>
+                ) : (
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      onClick={handleSaveNote}
+                      disabled={savingNote || !commentDirty}
+                      className="rounded-md bg-primary-700 text-white text-sm font-medium px-4 py-1.5
+                        hover:bg-primary-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {savingNote ? 'Saving…' : 'Save note'}
+                    </button>
+                    {noteSaved && !commentDirty && (
+                      <span className="text-xs text-green-600 font-medium">Saved ✓</span>
+                    )}
+                    {commentDirty && !savingNote && (
+                      <span className="text-xs text-amber-600">Unsaved changes</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {myVote !== undefined && (
-                <p className="text-xs text-gray-400 mt-2 text-center">
-                  Click your vote again to undo it
-                </p>
+                <div className="mt-4 pt-3 border-t border-gray-100 text-center">
+                  <button
+                    onClick={handleUndo}
+                    disabled={submitting}
+                    className="text-xs text-gray-400 hover:text-red-600 transition-colors underline underline-offset-2 disabled:opacity-50"
+                  >
+                    Remove my vote
+                  </button>
+                </div>
               )}
             </div>
           </div>

@@ -22,11 +22,17 @@ export default function SignupPage() {
       return
     }
     setLoading(true)
-    const { error } = await signUp(email, password, name)
+    const { error, session } = await signUp(email, password, name)
     setLoading(false)
     if (error) {
       setError(error.message || 'Something went wrong. Please try again.')
+    } else if (session) {
+      // Email confirmation is off, so the account is already active and logged in — send
+      // them straight into onboarding. Showing "check your email" here would strand them
+      // waiting on a mail that is never sent.
+      navigate('/onboarding/goal', { replace: true })
     } else {
+      // Kept for the case where email confirmation is re-enabled on the project.
       setConfirming(true)
     }
   }

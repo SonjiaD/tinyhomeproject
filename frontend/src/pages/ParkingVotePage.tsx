@@ -12,6 +12,7 @@ import { SitePanel } from '../components/SitePanel'
 import { ShareButtons } from '../components/ShareButtons'
 import { ProgressToast } from '../components/ui'
 import { useAuth } from '../contexts/AuthContext'
+import { getAuthHeaders } from '../lib/supabase'
 
 const API = import.meta.env.VITE_API_URL || ''
 const MIN_ZOOM = 14
@@ -199,6 +200,17 @@ function pointInRingRaw(lat: number, lon: number, ring: number[][]): boolean {
       inside = !inside
   }
   return inside
+}
+
+// /api/votes/mine returns the flat {site_id: support} map with this user's saved notes
+// smuggled alongside under a reserved key (see the endpoint's docstring). Split the two
+// apart, tolerating an older backend that doesn't send the key at all.
+const COMMENTS_KEY = '__comments__'
+function splitVotesPayload(data: any): { votes: Record<string, boolean>; comments: Record<string, string> } {
+  const raw = { ...(data ?? {}) } as Record<string, any>
+  const comments = (raw[COMMENTS_KEY] ?? {}) as Record<string, string>
+  delete raw[COMMENTS_KEY]
+  return { votes: raw as Record<string, boolean>, comments }
 }
 
 // ── Canvas-rendered GeoJSON layer — created ONCE, styled imperatively ─────────
@@ -675,6 +687,10 @@ export default function ParkingVotePage() {
   const [voteCounts, setVoteCounts] = useState<VoteCountsMap>({})
   const [allBounds, setAllBounds] = useState<Record<string, DistanceBounds>>({})
   const [userVotes, setUserVotes] = useState<Record<string, boolean>>({})
+  // Notes this user saved per site, so SitePanel can prefill and edit them instead of
+  // overwriting. Server-only (deliberately kept out of the parkingVotes_v1 localStorage
+  // blob, whose merge-window reconciliation only reasons about booleans).
+  const [userComments, setUserComments] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [zoom, setZoom] = useState(14)
 
@@ -694,6 +710,11 @@ export default function ParkingVotePage() {
 
   // ── City boundary outline ──────────────────────────────────────────────────
   const [cityBoundary, setCityBoundary] = useState<NeighborhoodGeometry | null>(null)
+  // Piedmont is a separate incorporated city entirely surrounded by Oakland, but
+  // oakland_boundary.geojson's rings have no interior hole for it, so the drawn outline used
+  // to claim Piedmont as Oakland. Fetched separately and rendered both as its own outline and
+  // as a hole punched into the Oakland polygon below.
+  const [piedmontRing, setPiedmontRing] = useState<[number, number][] | null>(null)
 
   // ── Persistent share dropdown ───────────────────────────────────────────────
   const [sharePanelOpen, setSharePanelOpen] = useState(false)
@@ -805,11 +826,12 @@ export default function ParkingVotePage() {
     if (!user?.id) return
     try {
       const [mineRes, countsRes] = await Promise.all([
-        axios.get(`${API}/api/votes/mine`, { params: { user_id: user.id } }),
+        axios.get(`${API}/api/votes/mine`, { headers: await getAuthHeaders() }),
         axios.get(`${API}/api/votes`),
       ])
-      const mine = (mineRes.data ?? {}) as Record<string, boolean>
+      const { votes: mine, comments } = splitVotesPayload(mineRes.data)
       setUserVotes(mine)
+      setUserComments(comments)
       const all = JSON.parse(localStorage.getItem('parkingVotes_v1') || '{}') as Record<string, Record<string, boolean>>
       all[user.id] = mine
       localStorage.setItem('parkingVotes_v1', JSON.stringify(all))
@@ -848,10 +870,13 @@ export default function ParkingVotePage() {
     // user casts/undoes (single or batch — all write localStorage) while it's in flight would
     // otherwise be clobbered by the stale snapshot. We detect those by diffing against this.
     const startSnapshot = readLocalMine()
-    axios.get(`${API}/api/votes/mine`, { params: { user_id: uid } })
+    getAuthHeaders()
+      .then(headers => axios.get(`${API}/api/votes/mine`, { headers }))
       .then(res => {
         if (cancelled) return
-        const mine = { ...(res.data ?? {}) } as Record<string, boolean>
+        const split = splitVotesPayload(res.data)
+        const mine = split.votes
+        setUserComments(split.comments)
         const currentLocal = readLocalMine()
         // Re-apply changes made during the fetch window (local wins for those keys only).
         for (const id of new Set([...Object.keys(startSnapshot), ...Object.keys(currentLocal)])) {
@@ -930,6 +955,16 @@ export default function ParkingVotePage() {
     fetch('/oakland_boundary.geojson')
       .then(r => r.json())
       .then(data => setCityBoundary(data.features?.[0]?.geometry ?? null))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    fetch('/piedmont_boundary.geojson')
+      .then(r => r.json())
+      .then(data => {
+        const ring: number[][] | undefined = data.features?.[0]?.geometry?.coordinates?.[0]
+        if (ring) setPiedmontRing(ring.map(([lon, lat]) => [lat, lon] as [number, number]))
+      })
       .catch(() => {})
   }, [])
 
@@ -1067,7 +1102,7 @@ export default function ParkingVotePage() {
     try {
       for (let i = 0; i < ids.length; i += CHUNK) {
         const chunk = ids.slice(i, i + CHUNK)
-        await axios.post(`${API}/api/votes/batch`, { site_ids: chunk, support, comment: batchComment || null, user_id: user.id }, { timeout: 15000 })
+        await axios.post(`${API}/api/votes/batch`, { site_ids: chunk, support, comment: batchComment || null, user_id: user.id }, { timeout: 15000, headers: await getAuthHeaders() })
         setBatchProgress({ done: Math.min(i + CHUNK, ids.length), total: ids.length })
       }
       setVoteCounts(prev => {
@@ -1099,6 +1134,16 @@ export default function ParkingVotePage() {
         const newYes = Object.values(userMap).filter(Boolean).length
         checkMilestones(newYes, prevYes)
       }
+      // A batch comment overwrites every note in the selection (the backend preserves the
+      // existing ones only when the box was left empty), so mirror that in the local cache.
+      if (batchComment.trim()) {
+        const text = batchComment.trim()
+        setUserComments(prev => {
+          const next = { ...prev }
+          for (const id of ids) next[id] = text
+          return next
+        })
+      }
       setSelectedIds(new Set()); setBatchComment('')
       fetchCommunityTotal()
     } catch {
@@ -1122,6 +1167,8 @@ export default function ParkingVotePage() {
     setCommunityTotal(prev => prev !== null ? prev - ids.filter(id => userVotes[id] === true).length : prev)
     const prevVotes = { ...userVotes }
     setUserVotes(prev => { const n = { ...prev }; ids.forEach(id => delete n[id]); return n })
+    // Notes live on the vote rows being deleted, so they go with them.
+    setUserComments(prev => { const n = { ...prev }; ids.forEach(id => delete n[id]); return n })
     // Bulk localStorage clear — one read + one write instead of O(n) individual calls
     const stored = localStorage.getItem('parkingVotes_v1')
     if (stored) {
@@ -1147,7 +1194,7 @@ export default function ParkingVotePage() {
     try {
       for (let i = 0; i < ids.length; i += CHUNK) {
         const chunk = ids.slice(i, i + CHUNK)
-        await axios.delete(`${API}/api/votes/batch`, { data: { site_ids: chunk, user_id: user.id }, timeout: 15000 })
+        await axios.delete(`${API}/api/votes/batch`, { data: { site_ids: chunk, user_id: user.id }, timeout: 15000, headers: await getAuthHeaders() })
         setBatchProgress({ done: Math.min(i + CHUNK, ids.length), total: ids.length })
       }
       fetchCommunityTotal()
@@ -1483,19 +1530,42 @@ export default function ParkingVotePage() {
 
           <AmenityPins site={selectedSite} />
 
-          {cityBoundary && (
+          {cityBoundary && (() => {
+            const polys = cityBoundary.type === 'MultiPolygon'
+              ? cityBoundary.coordinates.map(poly =>
+                  poly.map(ring => ring.map(([lon, lat]) => [lat, lon] as [number, number]))
+                )
+              : [cityBoundary.coordinates.map(ring =>
+                  ring.map(([lon, lat]) => [lat, lon] as [number, number])
+                )]
+            // Punch Piedmont out as a hole in whichever Oakland polygon contains it (the
+            // mainland one — Leaflet renders positions[i][0] as that polygon's outer ring and
+            // positions[i][1..] as holes in it).
+            if (piedmontRing) {
+              const [pLat, pLon] = piedmontRing[0]
+              const hostIdx = polys.findIndex(rings => pointInRingRaw(
+                pLat, pLon,
+                rings[0].map(([lat, lon]) => [lon, lat])
+              ))
+              if (hostIdx !== -1) polys[hostIdx] = [...polys[hostIdx], piedmontRing]
+            }
+            return (
+              <Polygon
+                positions={polys}
+                pathOptions={{ color: '#0f2a2a', weight: 2, fillOpacity: 0, interactive: false }}
+              />
+            )
+          })()}
+
+          {piedmontRing && (
             <Polygon
-              positions={
-                cityBoundary.type === 'MultiPolygon'
-                  ? cityBoundary.coordinates.map(poly =>
-                      poly.map(ring => ring.map(([lon, lat]) => [lat, lon] as [number, number]))
-                    )
-                  : [cityBoundary.coordinates.map(ring =>
-                      ring.map(([lon, lat]) => [lat, lon] as [number, number])
-                    )]
-              }
-              pathOptions={{ color: '#0f2a2a', weight: 2, fillOpacity: 0, interactive: false }}
-            />
+              positions={piedmontRing}
+              pathOptions={{ color: '#6b7280', weight: 1.5, fillOpacity: 0, dashArray: '4 4', interactive: false }}
+            >
+              <Tooltip permanent direction="center" className="!bg-transparent !border-0 !shadow-none !text-gray-500 !text-[10px] !font-medium">
+                Piedmont — separate city
+              </Tooltip>
+            </Polygon>
           )}
 
           {activeNeighborhood && (
@@ -1532,7 +1602,15 @@ export default function ParkingVotePage() {
             voteTally={selectedTally}
             myVote={selectedId ? userVotes[selectedId] : undefined}
             userId={user?.id}
+            savedComment={selectedId ? userComments[selectedId] : undefined}
             onClose={() => setSelectedId(null)}
+            onCommentSaved={(id: string, text: string) => {
+              setUserComments(prev => {
+                const n = { ...prev }
+                if (text) n[id] = text; else delete n[id]
+                return n
+              })
+            }}
             onVoteSubmitted={(id: string, tally: VoteTally, support: boolean) => {
               const prevVote = userVotes[id]
               setUserVotes(prev => ({ ...prev, [id]: support }))

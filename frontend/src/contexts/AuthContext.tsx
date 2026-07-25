@@ -24,7 +24,10 @@ interface AuthContextType {
   profile: Profile | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>
-  signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>
+  // `session` is true when the signup logged the user straight in (email confirmation is
+  // disabled on the project), so the caller can route on into onboarding instead of showing
+  // a "check your email" screen for a mail that will never arrive.
+  signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null; session: boolean }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -108,22 +111,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password, data: { full_name: name } }),
       })
     } catch {
-      return { error: new Error('Network error. Please check your connection and try again.') }
+      return { error: new Error('Network error. Please check your connection and try again.'), session: false }
     }
     const body = await res.json().catch(() => null)
     if (!res.ok) {
-      return { error: new Error(body?.msg || body?.error_description || 'Something went wrong. Please try again.') }
+      // With email confirmation DISABLED, GoTrue stops hiding duplicates behind the empty
+      // `identities` array below and returns a 422/400 "User already registered" instead.
+      // Map it to the same friendly copy so the behaviour survives either project setting.
+      const raw = String(body?.msg || body?.error_description || body?.message || '')
+      if (/already registered|already exists|already been registered/i.test(raw)) {
+        return { error: new Error('An account with this email already exists. Please sign in instead.'), session: false }
+      }
+      return { error: new Error(raw || 'Something went wrong. Please try again.'), session: false }
     }
     if (Array.isArray(body?.identities) && body.identities.length === 0) {
-      return { error: new Error('An account with this email already exists. Please sign in instead.') }
+      return { error: new Error('An account with this email already exists. Please sign in instead.'), session: false }
     }
-    // If GoTrue returned an immediate session (e.g. email confirmation disabled on this
-    // project in the future), sync it into the SDK's own store so getSession() /
-    // onAuthStateChange stay consistent with what we just did via the raw fetch above.
+    // Email confirmation is disabled on this project, so GoTrue returns a session right here.
+    // Sync it into the SDK's own store so getSession() / onAuthStateChange stay consistent
+    // with what we just did via the raw fetch above.
     if (body?.access_token && body?.refresh_token) {
       await supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token })
+      return { error: null, session: true }
     }
-    return { error: null }
+    return { error: null, session: false }
   }
 
   async function signOut() {

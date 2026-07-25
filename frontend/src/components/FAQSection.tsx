@@ -10,14 +10,23 @@ const faqItems: FAQItem[] = [
   {
     question: 'What exactly is Tiny Home Parklet?',
     answer: (
-      <p>
-        A factory-built home, usually around 200 square feet, with a full kitchen, bathroom, and
-        electrical hookup. Park Models is the legal term, they are built to California HCD Title 25
-        standards and ANSI 119.5. They're technically transportable structures on a chassis, which
-        means they don't require a foundation. These are not sleeping cabins or shelter beds. They
-        are full residential units, studio apartments on wheels. The Parklet part is a small fenced
-        enclosure around the home.
-      </p>
+      <>
+        <p className="mb-3">
+          A factory-built home, usually around 200 square feet, with a full kitchen, bathroom, and
+          electrical hookup. Park Models is the legal term, they are built to California HCD Title 25
+          standards and ANSI 119.5. They're technically transportable structures on a chassis, which
+          means they don't require a foundation. These are not sleeping cabins or shelter beds. They
+          are full residential units, studio apartments on wheels. The Parklet part is a small fenced
+          enclosure around the home.
+        </p>
+        <p>
+          This is an antidote to the lawless street parking of RVs happening now because there is
+          not an adequate supply of financially accessible housing. Expanding supply would
+          ultimately bring rents down across the city, which would significantly reduce the demand
+          and need for someone to park an RV to live on the street, and provide an opportunity for
+          reasonable enforcement of non-permitted homes on wheels.
+        </p>
+      </>
     ),
   },
   {

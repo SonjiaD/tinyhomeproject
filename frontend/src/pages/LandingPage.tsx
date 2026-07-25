@@ -214,8 +214,9 @@ function SlideConcept() {
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">What is a Tiny Home Parklet?</h2>
           <p className="text-gray-500 leading-relaxed">
             Permitted factory-built Park Models (also known as Tiny Homes on Wheels): fully
-            code-compliant homes with kitchens and bathrooms, installed on Oakland parking
-            spaces, connected to utilities, and rented at market rate.
+            code-compliant homes with kitchens and bathrooms, installed legally through an
+            approval process on Oakland parking spaces, connected to utilities, and rented or
+            owned by everyday people.
           </p>
         </motion.div>
 
@@ -342,11 +343,14 @@ function SlideVisions() {
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-8"
+          className="text-center mb-6"
         >
-          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-3">Three Visions</p>
-          <h2 className="text-3xl md:text-4xl font-bold text-white">Pick your ambition.</h2>
-          <p className="text-teal-300 mt-2 text-sm">You'll choose one of these when you sign up.</p>
+          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-teal-400 mb-2">Three Visions</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-white">
+            Help us collectively decide where these Tiny Home Parklets could go.
+          </h2>
+          <p className="text-teal-200 mt-2 text-base font-medium">Pick your ambition.</p>
+          <p className="text-teal-300 text-sm">You'll choose one of these when you sign up.</p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -583,7 +587,24 @@ export default function LandingPage({ standalone = false }: { standalone?: boole
         <span className={`text-sm font-semibold tracking-tight transition-colors ${isDark ? 'text-white/70' : 'text-gray-700'}`}>
           Tiny Home Parklet Siting Tool
         </span>
-        <div className="flex items-center gap-3">
+        {/* People can arrive at this link cold (e.g. from Reddit) with no context for the
+            slides' pace. Keep a way out of the slideshow on every slide, not just the last
+            one, so someone frustrated with it can go read About or jump straight to the map. */}
+        <div className="flex items-center gap-4">
+          <Link
+            to="/about"
+            className={`text-sm font-medium transition-colors ${isDark ? 'text-white/70 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+          >
+            About
+          </Link>
+          {current < SLIDE_COUNT - 1 && (
+            <button
+              onClick={() => go(SLIDE_COUNT - 1, 1)}
+              className={`text-sm font-medium transition-colors ${isDark ? 'text-white/70 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              Skip intro →
+            </button>
+          )}
           {standalone ? (
             <Link
               to="/parking-vote"

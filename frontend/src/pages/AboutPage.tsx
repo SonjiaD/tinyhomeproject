@@ -39,8 +39,16 @@ export default function AboutPage() {
         <AboutSection label="What Is a Tiny Home Parklet?">
           <p className="text-gray-600 leading-relaxed mb-4">
             Permitted factory-built Park Models (also known as Tiny Homes on Wheels): fully
-            code-compliant homes with kitchens and bathrooms, installed on Oakland parking
-            spaces, connected to utilities, and rented at market rate.
+            code-compliant homes with kitchens and bathrooms, installed legally through an
+            approval process on Oakland parking spaces, connected to utilities, and rented or
+            owned by everyday people.
+          </p>
+          <p className="text-gray-600 leading-relaxed mb-4">
+            This is an antidote to the lawless street parking of RVs happening now because there
+            is not an adequate supply of financially accessible housing. Expanding supply would
+            ultimately bring rents down across the city, which would significantly reduce the
+            demand and need for someone to park an RV to live on the street, and provide an
+            opportunity for reasonable enforcement of non-permitted homes on wheels.
           </p>
           <div className="rounded-xl overflow-hidden border border-gray-100">
             <img
