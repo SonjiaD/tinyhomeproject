@@ -498,12 +498,21 @@ def save_ahp_submission():
 
 @app.route("/api/ping", methods=["GET"])
 def ping():
-    """Keepalive endpoint — touches Supabase so the project doesn't pause."""
-    if supabase:
-        try:
-            supabase.table("votes").select("id").limit(1).execute()
-        except Exception:
-            pass
+    """Keepalive endpoint — touches Supabase so the project doesn't pause. Deliberately does
+    NOT swallow a failed Supabase touch: this is the only signal the GitHub Actions keepalive
+    workflow has, so if the touch fails we must return a non-200 and let it propagate, or the
+    workflow shows a false-positive green check while Supabase silently pauses anyway."""
+    if not supabase:
+        return jsonify({"status": "error", "detail": "Supabase client not configured"}), 500
+    try:
+        # Supabase's pause criteria wants "a few user requests to the database" per touch,
+        # not one — so this is 3 distinct real queries against 3 different tables, not 1.
+        supabase.table("votes").select("id").limit(1).execute()
+        supabase.table("sites").select("site_id").limit(1).execute()
+        supabase.table("vote_events").select("id").limit(1).execute()
+    except Exception as e:
+        print(f"Keepalive ping failed to touch Supabase: {e}")
+        return jsonify({"status": "error", "detail": str(e)}), 502
     return jsonify({"status": "ok"}), 200
 
 @app.route("/api/suggestions", methods=["GET"])

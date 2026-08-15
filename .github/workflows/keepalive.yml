@@ -2,7 +2,20 @@ name: Keepalive ping
 
 on:
   schedule:
-    - cron: '0 8 */5 * *'   # every 5 days at 08:00 UTC
+    # Supabase's pausing docs say "A FEW user requests to the database EACH DAY" — spread
+    # 10x/day (~every 2.4h) so several delayed/skipped GitHub Actions runs in a row still
+    # leave plenty of real activity that day.
+    # https://supabase.com/docs/guides/platform/free-project-pausing
+    - cron: '0 0 * * *'
+    - cron: '0 2 * * *'
+    - cron: '0 5 * * *'
+    - cron: '0 7 * * *'
+    - cron: '0 10 * * *'
+    - cron: '0 12 * * *'
+    - cron: '0 14 * * *'
+    - cron: '0 17 * * *'
+    - cron: '0 19 * * *'
+    - cron: '0 22 * * *'
   workflow_dispatch:          # allow manual trigger from GitHub Actions UI
 
 jobs:
@@ -10,10 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping backend (wakes Render + touches Supabase)
+        # No "|| echo ... non-fatal" here on purpose: if this fails, the step MUST fail,
+        # so the run shows red in the Actions tab and GitHub emails you automatically.
+        # A keepalive that can't fail loudly can't actually alert you to anything.
         run: |
           curl -fsS "${{ secrets.BACKEND_URL }}/api/ping" \
             --max-time 60 \
-            --retry 3 \
-            --retry-delay 10 \
-            && echo "Ping successful" \
-            || echo "Ping failed (non-fatal)"
+            --retry 5 \
+            --retry-delay 15 \
+            --retry-all-errors
