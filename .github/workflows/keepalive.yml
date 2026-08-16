@@ -26,9 +26,15 @@ jobs:
         # No "|| echo ... non-fatal" here on purpose: if this fails, the step MUST fail,
         # so the run shows red in the Actions tab and GitHub emails you automatically.
         # A keepalive that can't fail loudly can't actually alert you to anything.
+        #
+        # Render free tier sleeps after ~15 min idle, and we only ping every ~2.4h, so it's
+        # asleep on nearly every run and has to cold-boot (this app loads a 52MB geojson file
+        # at startup, so that boot isn't instant). A run that failed with 6x fast 503s in ~76s
+        # showed the old 5-retry/15s-delay budget (~75s total) was shorter than the actual
+        # cold-boot time. Widened to comfortably outlast a slow wake-up.
         run: |
           curl -fsS "${{ secrets.BACKEND_URL }}/api/ping" \
             --max-time 60 \
-            --retry 5 \
-            --retry-delay 15 \
+            --retry 10 \
+            --retry-delay 20 \
             --retry-all-errors
